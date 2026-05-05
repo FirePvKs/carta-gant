@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* NOTA: gantt-task-react/dist/index.css se importa directamente en GanttChart.jsx
+   para evitar conflictos con el orden de Tailwind */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* ── Correcciones para gantt-task-react ──────────────────────────────────── */
+
+/* 1. Fuerza fondo blanco en toda el área del gráfico (elimina el negro) */
+.gantt-wrapper > div,
+[class^="_"],
+[class^="_"] svg {
+  background-color: transparent;
+}
+
+/* 2. Contenedor SVG principal — fondo blanco explícito */
+.gantt-container {
+  background: #ffffff !important;
+}
+
+/* 3. Texto de la lista de tareas */
+[class*="taskListTableRow"],
+[class*="taskListCell"] {
+  color: #374151 !important;
+  background: #ffffff !important;
+}
+
+[class*="taskListTableRow"]:nth-child(even),
+[class*="taskListTableRow"]:nth-child(even) [class*="taskListCell"] {
+  background: #f9fafb !important;
+}
+
+/* 4. Oculta columnas "From" y "To" - solo muestra nombre */
+[class*="taskListTableRow"] > [class*="taskListCell"]:nth-child(2),
+[class*="taskListTableRow"] > [class*="taskListCell"]:nth-child(3),
+[class*="taskListHeader"] > [class*="taskListHeaderSeparator"]:nth-child(2),
+[class*="taskListHeader"] > [class*="taskListHeaderSeparator"]:nth-child(3) {
+  display: none !important;
+}
+
+/* 5. Texto blanco dentro de las barras de progreso */
+[class*="barLabel"] {
+  fill: #ffffff !important;
+  font-size: 11px !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* 6. Fondo del área de grid del Gantt */
+[class*="gridRow"],
+[class*="gridBackground"] {
+  background: #ffffff !important;
+}
+
+[class*="gridRow"]:nth-child(even) {
+  fill: #f9fafb !important;
+}
+
+/* 7. Tooltip */
+[class*="tooltipDefaultContainer"] {
+  background: #1f2937 !important;
+  color: #f9fafb !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+}
