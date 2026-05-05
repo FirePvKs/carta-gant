@@ -3,14 +3,6 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    port: 5173,
-    // Proxy: todas las llamadas a /api se redirigen al servidor Express
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-    },
-  },
+  server: { port: 5173 },
+  // Sin proxy: la app usa localStorage, no necesita backend para Vercel
 });

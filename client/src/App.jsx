@@ -1,37 +1,37 @@
 import { useState } from 'react';
-import TaskForm from './components/TaskForm';
+import { TaskProvider } from './context/TaskContext';
+import TaskPanel from './components/TaskPanel';
 import GanttChart from './components/GanttChart';
 import Toolbar from './components/Toolbar';
-import { TaskProvider } from './context/TaskContext';
-
-const PROJECT_NAME = 'carta gantt version 0.1';
+import EditTaskModal from './components/EditTaskModal';
 
 export default function App() {
   const [viewMode, setViewMode] = useState('Week');
+  // null = modal cerrado | {} = crear nueva | {id,...} = editar existente
+  const [editingTask, setEditingTask] = useState(null);
 
   return (
     <TaskProvider>
       <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
 
-        {/* Panel lateral izquierdo */}
-        <aside className="w-72 min-w-[288px] bg-white border-r border-gray-200 flex flex-col shadow-sm z-10">
-          <header className="px-5 py-4 border-b border-gray-200">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Nueva tarea</p>
-          </header>
-          <TaskForm />
-        </aside>
+        {/* Panel izquierdo de tareas */}
+        <TaskPanel onEdit={setEditingTask} />
 
         {/* Área principal */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          <Toolbar
-            viewMode={viewMode}
-            onViewChange={setViewMode}
-            projectName={PROJECT_NAME}
-          />
-          <GanttChart viewMode={viewMode} />
+          <Toolbar viewMode={viewMode} onViewChange={setViewMode} />
+          <GanttChart viewMode={viewMode} onEditTask={setEditingTask} />
         </main>
 
       </div>
+
+      {/* Modal de edición/creación (se monta solo cuando hay tarea activa) */}
+      {editingTask !== null && (
+        <EditTaskModal
+          task={editingTask?.id ? editingTask : null}
+          onClose={() => setEditingTask(null)}
+        />
+      )}
     </TaskProvider>
   );
 }
