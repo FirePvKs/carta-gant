@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Gantt, ViewMode } from 'gantt-task-react';
 import 'gantt-task-react/dist/index.css';
-import { Trash2, ClipboardList } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useTasks } from '../context/TaskContext';
 
 const VIEW_MAP = {
@@ -55,7 +55,6 @@ export default function GanttChart({ viewMode }) {
   if (!ganttTasks.length) return (
     <div className="flex-1 flex items-center justify-center">
       <div className="flex flex-col items-center gap-3 text-gray-300">
-        <ClipboardList size={44} strokeWidth={1.2} />
         <p className="text-sm font-medium text-gray-500">Sin tareas todavía</p>
         <p className="text-xs text-gray-400">Agrega tu primera tarea en el panel izquierdo</p>
       </div>
