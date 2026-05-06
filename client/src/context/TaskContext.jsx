@@ -141,17 +141,20 @@ export function TaskProvider({ children }) {
     .map(t => ({
       id: t.id,
       name: t.name,
-      type: t.isParent ? 'project' : 'task',
+      // Siempre 'task' — 'project' desactiva el drag en gantt-task-react
+      type: 'task',
       start: new Date(t.start + 'T00:00:00'),
       end: new Date(t.end + 'T23:59:59'),
       progress: t.computedProgress,
       project: t.parentId ?? undefined,
+      dependencies: t.parentId ? [t.parentId] : [],
       hideChildren: hiddenParents.has(t.id),
       styles: {
         progressColor: t.color,
         progressSelectedColor: t.color,
-        backgroundColor: t.color + '33',
-        backgroundSelectedColor: t.color + '55',
+        // Las tareas con hijos tienen barra más opaca para distinguirse
+        backgroundColor: t.isParent ? t.color + '55' : t.color + '33',
+        backgroundSelectedColor: t.color + '66',
       },
     }));
 

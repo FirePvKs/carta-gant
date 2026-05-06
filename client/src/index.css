@@ -10,10 +10,40 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+::-webkit-scrollbar { width: 8px; height: 10px; }
+::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: #22c55e; border-radius: 10px; border: 2px solid #f1f5f9; }
+::-webkit-scrollbar-thumb:hover { background: #16a34a; }
+
+/* Clase reutilizable para inputs y selects del modal */
+@layer components {
+  .input {
+    @apply w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm
+           focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent
+           bg-white text-gray-700 transition;
+  }
+}
+
+/* Slider de progreso - thumb personalizado */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid currentColor;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid currentColor;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
 
 /* ── Correcciones gantt-task-react ── */
 [class*="taskListTableRow"],
@@ -25,13 +55,8 @@ body {
 [class*="taskListTableRow"]:nth-child(even) [class*="taskListCell"] {
   background: #f9fafb !important;
 }
-[class*="gridRow"]:nth-child(even) {
-  fill: #f9fafb !important;
-}
-[class*="barLabel"] {
-  fill: #ffffff !important;
-  font-size: 11px !important;
-}
+[class*="gridRow"]:nth-child(even) { fill: #f9fafb !important; }
+[class*="barLabel"] { fill: #ffffff !important; font-size: 11px !important; }
 [class*="tooltipDefaultContainer"] {
   background: #1f2937 !important;
   color: #f9fafb !important;
