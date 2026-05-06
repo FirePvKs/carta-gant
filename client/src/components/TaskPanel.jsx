@@ -118,13 +118,15 @@ function TaskRow({ task, depth = 0, onEdit, dragState, setDragState }) {
 
 /** Panel lateral izquierdo principal */
 export default function TaskPanel({ onEdit }) {
-  const { tasks, unnestTask } = useTasks();
+  const { tasks, unnestTask, addTask } = useTasks();
   const [dragState, setDragState] = useState(null);
   const [isDragOverRoot, setIsDragOverRoot] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const inputRef = useState(null);
 
   const tree = buildTree(tasks);
 
-  // Drop en zona vacía = sacar del padre
   const handleRootDrop = (e) => {
     e.preventDefault();
     const id = e.dataTransfer.getData('text/plain');
@@ -132,6 +134,24 @@ export default function TaskPanel({ onEdit }) {
     setIsDragOverRoot(false);
     setDragState(null);
   };
+
+  const startAdding = () => {
+    setAdding(true);
+    setNewName('');
+  };
+
+  const confirmAdd = () => {
+    const name = newName.trim();
+    if (name) {
+      const today = new Date().toISOString().split('T')[0];
+      const end = new Date(); end.setDate(end.getDate() + 7);
+      addTask({ name, start: today, end: end.toISOString().split('T')[0] });
+    }
+    setAdding(false);
+    setNewName('');
+  };
+
+  const cancelAdd = () => { setAdding(false); setNewName(''); };
 
   return (
     <aside className="w-72 min-w-[288px] bg-white border-r border-gray-200 flex flex-col h-full">
@@ -145,7 +165,7 @@ export default function TaskPanel({ onEdit }) {
           <span className="text-xs text-gray-400 flex-shrink-0">Estado</span>
         </div>
         <button
-          onClick={() => onEdit({})}
+          onClick={startAdding}
           className="ml-2 flex-shrink-0 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
         >
           <Plus size={13} />
@@ -161,22 +181,50 @@ export default function TaskPanel({ onEdit }) {
         onDrop={handleRootDrop}
         style={{ background: isDragOverRoot && dragState ? '#fafafa' : 'transparent' }}
       >
-        {tree.length === 0 ? (
+        {tree.length === 0 && !adding ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
             <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xl">+</div>
             <p className="text-sm text-gray-400 font-medium">Sin tareas</p>
             <p className="text-xs text-gray-300">Haz clic en "Añadir" para crear tu primera tarea</p>
           </div>
         ) : (
-          tree.map(task => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              onEdit={onEdit}
-              dragState={dragState}
-              setDragState={setDragState}
-            />
-          ))
+          <>
+            {tree.map(task => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                onEdit={onEdit}
+                dragState={dragState}
+                setDragState={setDragState}
+              />
+            ))}
+
+            {/* Inline quick-add row */}
+            {adding && (
+              <div className="flex items-center gap-1.5 px-3 py-2 mx-1 rounded-lg border border-blue-300 bg-blue-50">
+                <input
+                  autoFocus
+                  type="text"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') confirmAdd();
+                    if (e.key === 'Escape') cancelAdd();
+                  }}
+                  placeholder="Nombre de la tarea…"
+                  className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400 min-w-0"
+                />
+                <button onClick={confirmAdd}
+                  className="w-6 h-6 rounded flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white flex-shrink-0 transition-colors">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+                <button onClick={cancelAdd}
+                  className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex-shrink-0 transition-colors">
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
