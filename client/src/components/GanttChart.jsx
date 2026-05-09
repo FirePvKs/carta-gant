@@ -448,8 +448,8 @@ export default function GanttChart({ onEditTask }) {
       const toTaskId = target?.dataset?.circle?.split('-')?.[0];
       const toSide   = target?.dataset?.circle?.split('-')?.[1];
       if(toTaskId && toTaskId !== depDrag.fromId) {
-        // fromId end → toId start (standard finish-to-start dependency)
-        addDependency(toTaskId, depDrag.fromId);
+        // Guarda exactamente qué extremo conecta con qué extremo
+        addDependency(toTaskId, depDrag.fromId, toSide, depDrag.fromSide);
       }
       setDepDrag(null);
     };
@@ -587,21 +587,27 @@ export default function GanttChart({ onEditTask }) {
                 {/* Existing dependency arrows */}
                 {visibleTasks.map(task=>{
                   if(!task.deps?.length) return null;
-                  return task.deps.map(depId=>{
-                    const fromIdx = visibleTasks.findIndex(t=>t.id===depId);
-                    const toIdx   = visibleTasks.findIndex(t=>t.id===task.id);
+                  return task.deps.map(dep=>{
+                    const depId    = dep.id ?? dep;
+                    const fromSide = dep.fromSide ?? 'end';
+                    const toSide   = dep.toSide   ?? 'start';
+                    const fromIdx  = visibleTasks.findIndex(t=>t.id===depId);
+                    const toIdx    = visibleTasks.findIndex(t=>t.id===task.id);
                     if(fromIdx<0||toIdx<0) return null;
                     const from = visibleTasks[fromIdx];
                     const to   = visibleTasks[toIdx];
                     const { bx: fbx, bw: fbw } = barPos(from);
-                    const { bx: tbx } = barPos(to);
-                    const fy = fromIdx*ROW_H + ROW_H/2;
-                    const ty = toIdx*ROW_H   + ROW_H/2;
-                    const x1 = fbx+fbw, x2 = tbx;
-                    const mx = (x1+x2)/2;
+                    const { bx: tbx, bw: tbw } = barPos(to);
+                    // Origin point based on fromSide
+                    const x1 = fromSide === 'start' ? fbx : fbx + fbw;
+                    const y1 = fromIdx * ROW_H + ROW_H / 2;
+                    // Target point based on toSide
+                    const x2 = toSide === 'start' ? tbx : tbx + tbw;
+                    const y2 = toIdx * ROW_H + ROW_H / 2;
+                    const mx = (x1 + x2) / 2;
                     return (
                       <path key={`${depId}-${task.id}`}
-                        d={`M${x1},${fy} C${mx},${fy} ${mx},${ty} ${x2},${ty}`}
+                        d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
                         fill="none" stroke="#64748b" strokeWidth="1.5"
                         markerEnd="url(#arrowhead)"
                       />
@@ -615,7 +621,7 @@ export default function GanttChart({ onEditTask }) {
                   if(fromIdx<0) return null;
                   const from = visibleTasks[fromIdx];
                   const { bx, bw } = barPos(from);
-                  const fx = depDrag.fromSide==='end' ? bx+bw : bx;
+                  const fx = depDrag.fromSide==='start' ? bx : bx+bw;
                   const fy = fromIdx*ROW_H + ROW_H/2;
                   // depDrag.x/y are relative to scrollContainer (includes scrollLeft/Top)
                   const tx = depDrag.x;

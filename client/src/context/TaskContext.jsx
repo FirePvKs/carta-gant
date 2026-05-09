@@ -146,12 +146,12 @@ export function TaskProvider({ children }) {
     setHiddenParents(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }, []);
 
-  /** Agrega dependencia: taskId depende de depId (depId debe terminar antes) */
-  const addDependency = useCallback((taskId, depId) => {
+  /** Agrega dependencia con información de extremos */
+  const addDependency = useCallback((taskId, depId, toSide = 'start', fromSide = 'end') => {
     if (taskId === depId) return;
     setTasks(prev => prev.map(t =>
-      t.id === taskId && !t.deps.includes(depId)
-        ? { ...t, deps: [...t.deps, depId] }
+      t.id === taskId && !t.deps.find(d => d.id === depId)
+        ? { ...t, deps: [...t.deps, { id: depId, fromSide, toSide }] }
         : t
     ));
   }, []);
@@ -159,7 +159,9 @@ export function TaskProvider({ children }) {
   /** Elimina dependencia */
   const removeDependency = useCallback((taskId, depId) => {
     setTasks(prev => prev.map(t =>
-      t.id === taskId ? { ...t, deps: t.deps.filter(d => d !== depId) } : t
+      t.id === taskId
+        ? { ...t, deps: t.deps.filter(d => (d.id ?? d) !== depId) }
+        : t
     ));
   }, []);
 
