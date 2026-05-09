@@ -54,6 +54,7 @@ export function TaskProvider({ children }) {
   const addTask = useCallback((data) => {
     const today = new Date().toISOString().split('T')[0];
     const nextWeek = () => { const d = new Date(); d.setDate(d.getDate()+7); return d.toISOString().split('T')[0]; };
+    const maxOrder = prev => prev.filter(t => !t.parentId).reduce((m,t) => Math.max(m, t.order ?? 0), 0);
     const task = {
       id: genId(),
       name:        data.name        ?? 'Nueva tarea',
@@ -71,9 +72,11 @@ export function TaskProvider({ children }) {
       deadlineEnabled: data.deadlineEnabled ?? false,
       deadline:    data.deadline    ?? '',
       deps:        data.deps        ?? [], // IDs de tareas que deben terminar antes
+      order:       data.order       ?? 0,
       createdAt:   new Date().toISOString(),
     };
     setTasks(prev => {
+      task.order = maxOrder(prev) + 1;
       const next = [...prev, task];
       return task.parentId ? recalcParent(task.parentId, next) : next;
     });
@@ -116,6 +119,29 @@ export function TaskProvider({ children }) {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, parentId: null } : t));
   }, []);
 
+  /** Reordena: mueve taskId para que quede ANTES de beforeId (o al final si beforeId es null) */
+  const reorderTask = useCallback((taskId, beforeId) => {
+    setTasks(prev => {
+      const task = prev.find(t => t.id === taskId);
+      if (!task) return prev;
+      // Solo reordena tareas del mismo nivel (mismo parentId)
+      const siblings = prev
+        .filter(t => t.parentId === task.parentId && t.id !== taskId)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const insertIdx = beforeId
+        ? siblings.findIndex(t => t.id === beforeId)
+        : siblings.length;
+      const finalIdx = insertIdx < 0 ? siblings.length : insertIdx;
+      siblings.splice(finalIdx, 0, task);
+      // Reasigna orders consecutivos
+      const updated = prev.map(t => {
+        const newOrder = siblings.findIndex(s => s.id === t.id);
+        return newOrder >= 0 ? { ...t, order: newOrder } : t;
+      });
+      return updated;
+    });
+  }, []);
+
   const toggleParent = useCallback((id) => {
     setHiddenParents(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }, []);
@@ -149,6 +175,7 @@ export function TaskProvider({ children }) {
       hiddenParents,
       addTask, updateTask, deleteTask,
       nestTask, unnestTask, toggleParent,
+      reorderTask,
       addDependency, removeDependency,
     }}>
       {children}

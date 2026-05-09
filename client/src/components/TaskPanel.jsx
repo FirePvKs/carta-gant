@@ -1,74 +1,144 @@
-import { useState } from 'react';
-import { Plus, ChevronRight, ChevronDown, GripVertical } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { useTasks, calcProgress } from '../context/TaskContext';
 
 const STATUSES = {
-  abierto:     { label: 'Abierto',      dot: '#9ca3af' },
-  en_progreso: { label: 'En progreso',  dot: '#3b82f6' },
-  terminado:   { label: 'Terminado',    dot: '#10b981' },
-  cerrado:     { label: 'Cerrado',      dot: '#374151' },
+  abierto:     { dot: '#9ca3af' },
+  en_progreso: { dot: '#3b82f6' },
+  terminado:   { dot: '#10b981' },
+  cerrado:     { dot: '#374151' },
 };
 
-/** Construye árbol de tareas desde lista plana */
-const buildTree = (tasks, parentId = null) =>
-  tasks.filter(t => t.parentId === parentId)
-       .map(t => ({ ...t, children: buildTree(tasks, t.id) }));
+/** Construye árbol con número de fila (1, 1.1, 1.2, 2, …) */
+const buildTree = (tasks, parentId = null, prefix = '') =>
+  tasks
+    .filter(t => t.parentId === parentId)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((t, i) => {
+      const num = prefix ? `${prefix}.${i + 1}` : `${i + 1}`;
+      return { ...t, _num: num, children: buildTree(tasks, t.id, num) };
+    });
 
-/** Fila individual de tarea en el panel */
-function TaskRow({ task, depth = 0, onEdit, dragState, setDragState }) {
-  const { nestTask, unnestTask, tasks } = useTasks();
+/** Línea indicadora de posición entre filas */
+function DropLine({ visible }) {
+  return (
+    <div style={{
+      height: 2, margin: '0 8px', borderRadius: 2,
+      background: visible ? '#3b82f6' : 'transparent',
+      transition: 'background 0.08s', flexShrink: 0,
+    }} />
+  );
+}
+
+// ─── Fila individual ─────────────────────────────────────────────────────────
+function TaskRow({ task, depth, onEdit, draggingId, setDraggingId, dropTarget, setDropTarget }) {
+  const { nestTask, tasks } = useTasks();
   const [collapsed, setCollapsed] = useState(false);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const hasChildren = task.children?.length > 0;
-  const progress = calcProgress(task.id, tasks);
-  const status = STATUSES[task.status] ?? STATUSES.abierto;
+  const numRef  = useRef(null);  // zona número  → reordenar
+  const nameRef = useRef(null);  // zona nombre  → anidar
+  const rowRef  = useRef(null);
 
-  const handleDragStart = (e) => {
+  const hasChildren = task.children?.length > 0;
+  const progress    = calcProgress(task.id, tasks);
+  const status      = STATUSES[task.status] ?? STATUSES.abierto;
+  const isDragging  = draggingId === task.id;
+
+  // ── drag source ─────────────────────────────────────────────────────────────
+  const onDragStart = (e) => {
     e.stopPropagation();
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', task.id);
-    setDragState(task.id);
+    setDraggingId(task.id);
+  };
+  const onDragEnd = () => { setDraggingId(null); setDropTarget(null); };
+
+  // ── drag over NUMBER zone → reordenar ───────────────────────────────────────
+  const onNumDragOver = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!draggingId || draggingId === task.id) return;
+    const rect  = numRef.current.getBoundingClientRect();
+    const ratio = (e.clientY - rect.top) / rect.height;
+    setDropTarget({ id: task.id, pos: ratio < 0.5 ? 'before' : 'after', zone: 'num' });
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (dragState && dragState !== task.id) setIsDragOver(true);
+  // ── drag over NAME zone → anidar ────────────────────────────────────────────
+  const onNameDragOver = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!draggingId || draggingId === task.id) return;
+    setDropTarget({ id: task.id, pos: 'on', zone: 'name' });
   };
 
-  const handleDragLeave = () => setIsDragOver(false);
+  const onDragLeave = (e) => {
+    // Solo limpia si realmente sale del row entero
+    if (!rowRef.current?.contains(e.relatedTarget)) {
+      setDropTarget(null);
+    }
+  };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const onDrop = (e) => {
+    e.preventDefault(); e.stopPropagation();
     const draggedId = e.dataTransfer.getData('text/plain');
-    if (draggedId && draggedId !== task.id) nestTask(draggedId, task.id);
-    setIsDragOver(false);
-    setDragState(null);
+    if (!draggedId || draggedId === task.id || !dropTarget) {
+      setDropTarget(null); setDraggingId(null); return;
+    }
+    if (dropTarget.zone === 'name' || dropTarget.pos === 'on') {
+      // Anidar
+      nestTask(draggedId, task.id);
+    } else {
+      // Reordenar
+      window.dispatchEvent(new CustomEvent('panel-reorder', {
+        detail: { draggedId, targetId: task.id, pos: dropTarget.pos }
+      }));
+    }
+    setDropTarget(null); setDraggingId(null);
   };
+
+  const isBefore = dropTarget?.id === task.id && dropTarget?.pos === 'before';
+  const isAfter  = dropTarget?.id === task.id && dropTarget?.pos === 'after';
+  const isOn     = dropTarget?.id === task.id && dropTarget?.pos === 'on';
 
   return (
     <>
-      <div
-        draggable
-        onDragStart={handleDragStart}
-        onDragEnd={() => setDragState(null)}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className="group flex items-center gap-1 px-2 py-2 cursor-pointer transition-colors rounded-lg mx-1"
-        style={{
-          paddingLeft: `${8 + depth * 18}px`,
-          background: isDragOver ? '#eff6ff' : 'transparent',
-          border: isDragOver ? '1px dashed #93c5fd' : '1px solid transparent',
-          opacity: dragState === task.id ? 0.4 : 1,
-        }}
-        onClick={() => onEdit(task)}
-      >
-        {/* Drag handle */}
-        <GripVertical size={12} className="text-gray-300 opacity-0 group-hover:opacity-100 flex-shrink-0 cursor-grab" />
+      <DropLine visible={isBefore} />
 
-        {/* Expand/collapse */}
+      <div
+        ref={rowRef}
+        draggable
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        style={{
+          display: 'flex', alignItems: 'center',
+          paddingRight: 8, paddingTop: 4, paddingBottom: 4,
+          paddingLeft: 4 + depth * 16,
+          opacity: isDragging ? 0.35 : 1,
+          borderRadius: 6, margin: '0 4px',
+          border: isOn ? '1px dashed #93c5fd' : '1px solid transparent',
+          background: isOn ? '#eff6ff' : 'transparent',
+          userSelect: 'none',
+        }}
+        className="group"
+      >
+        {/* ── Número de fila (zona reordenar) ── */}
+        <div
+          ref={numRef}
+          onDragOver={onNumDragOver}
+          title="Arrastra aquí para reordenar"
+          style={{
+            minWidth: 36, textAlign: 'right', paddingRight: 8,
+            fontSize: 11, color: '#9ca3af', fontVariantNumeric: 'tabular-nums',
+            cursor: 'grab', flexShrink: 0,
+            background: dropTarget?.id === task.id && dropTarget?.zone === 'num'
+              ? '#f0f9ff' : 'transparent',
+            borderRadius: 4, padding: '2px 6px 2px 2px',
+            fontWeight: 500,
+          }}
+        >
+          {task._num}
+        </div>
+
+        {/* ── Expand / dot ── */}
         <button
           className="flex-shrink-0 w-4 h-4 flex items-center justify-center"
           onClick={e => { e.stopPropagation(); setCollapsed(p => !p); }}
@@ -76,116 +146,154 @@ function TaskRow({ task, depth = 0, onEdit, dragState, setDragState }) {
           {hasChildren
             ? collapsed
               ? <ChevronRight size={12} className="text-gray-400" />
-              : <ChevronDown size={12} className="text-gray-400" />
-            : <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: task.color }} />
+              : <ChevronDown  size={12} className="text-gray-400" />
+            : <span className="w-1.5 h-1.5 rounded-full" style={{ background: task.color }} />
           }
         </button>
 
-        {/* Nombre */}
-        <span className="flex-1 text-sm text-gray-700 truncate min-w-0"
-          style={{ fontWeight: hasChildren ? 500 : 400 }}>
-          {task.name}
-        </span>
+        {/* ── Nombre (zona anidar) ── */}
+        <div
+          ref={nameRef}
+          onDragOver={onNameDragOver}
+          onClick={() => onEdit(task)}
+          title="Arrastra una tarea aquí para asignarla"
+          style={{
+            flex: 1, minWidth: 0, cursor: 'pointer',
+            padding: '2px 4px', borderRadius: 4,
+            background: isOn ? 'transparent' : 'transparent',
+          }}
+        >
+          <span
+            style={{
+              display: 'block', overflow: 'hidden', textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap', fontSize: 13, color: '#374151',
+              fontWeight: hasChildren ? 600 : 400,
+            }}
+          >
+            {task.name}
+          </span>
+        </div>
 
         {/* Asignado */}
         {task.assignee && (
-          <span className="text-xs text-gray-400 truncate max-w-[60px] hidden group-hover:block">
+          <span className="text-xs text-gray-400 truncate max-w-[52px] hidden group-hover:block flex-shrink-0 ml-1">
             {task.assignee}
           </span>
         )}
 
-        {/* Estado dot */}
-        <span className="flex-shrink-0 w-2 h-2 rounded-full" style={{ background: status.dot }} title={status.label} />
+        {/* Status dot */}
+        <span className="w-2 h-2 rounded-full flex-shrink-0 ml-1"
+          style={{ background: status.dot }} title={task.status} />
 
-        {/* Progreso % */}
-        <span className="text-xs text-gray-400 w-8 text-right flex-shrink-0">{progress}%</span>
+        {/* Progress */}
+        <span className="text-xs text-gray-400 w-7 text-right flex-shrink-0 ml-1">
+          {progress}%
+        </span>
       </div>
 
-      {/* Hijos */}
+      <DropLine visible={isAfter} />
+
+      {/* Children */}
       {!collapsed && task.children?.map(child => (
         <TaskRow
           key={child.id}
           task={child}
           depth={depth + 1}
           onEdit={onEdit}
-          dragState={dragState}
-          setDragState={setDragState}
+          draggingId={draggingId}
+          setDraggingId={setDraggingId}
+          dropTarget={dropTarget}
+          setDropTarget={setDropTarget}
         />
       ))}
     </>
   );
 }
 
-/** Panel lateral izquierdo principal */
+// ─── Panel principal ─────────────────────────────────────────────────────────
 export default function TaskPanel({ onEdit }) {
-  const { tasks, unnestTask, addTask } = useTasks();
-  const [dragState, setDragState] = useState(null);
-  const [isDragOverRoot, setIsDragOverRoot] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [newName, setNewName] = useState('');
-  const inputRef = useState(null);
+  const { tasks, unnestTask, addTask, reorderTask } = useTasks();
+  const [draggingId, setDraggingId] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
+  const [adding, setAdding]         = useState(false);
+  const [newName, setNewName]       = useState('');
 
-  const tree = buildTree(tasks);
+  // Escucha eventos de reordenamiento desde TaskRow
+  useState(() => {
+    const handler = (e) => {
+      const { draggedId, targetId, pos } = e.detail;
+      if (pos === 'before') {
+        reorderTask(draggedId, targetId);
+      } else {
+        // after: insertar después del target
+        const dragged  = tasks.find(t => t.id === draggedId);
+        const siblings = tasks
+          .filter(t => t.parentId === (dragged?.parentId ?? null) && t.id !== draggedId)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const idx    = siblings.findIndex(t => t.id === targetId);
+        const nextId = idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1].id : null;
+        reorderTask(draggedId, nextId);
+      }
+    };
+    window.addEventListener('panel-reorder', handler);
+    return () => window.removeEventListener('panel-reorder', handler);
+  });
 
-  const handleRootDrop = (e) => {
+  const onRootDrop = (e) => {
     e.preventDefault();
     const id = e.dataTransfer.getData('text/plain');
     if (id) unnestTask(id);
-    setIsDragOverRoot(false);
-    setDragState(null);
-  };
-
-  const startAdding = () => {
-    setAdding(true);
-    setNewName('');
+    setDraggingId(null); setDropTarget(null);
   };
 
   const confirmAdd = () => {
     const name = newName.trim();
     if (name) {
       const today = new Date().toISOString().split('T')[0];
-      const end = new Date(); end.setDate(end.getDate() + 7);
+      const end   = new Date(); end.setDate(end.getDate() + 7);
       addTask({ name, start: today, end: end.toISOString().split('T')[0] });
     }
-    setAdding(false);
-    setNewName('');
+    setAdding(false); setNewName('');
   };
-
   const cancelAdd = () => { setAdding(false); setNewName(''); };
+
+  const tree = buildTree(tasks);
 
   return (
     <aside className="w-72 min-w-[288px] bg-white border-r border-gray-200 flex flex-col h-full">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Tarea</span>
-          <span className="text-xs text-gray-300">|</span>
-          <span className="text-xs text-gray-400 truncate">Asignado</span>
-          <span className="text-xs text-gray-300">|</span>
-          <span className="text-xs text-gray-400 flex-shrink-0">Estado</span>
+        <div className="flex items-center gap-2 text-xs text-gray-400 flex-1 min-w-0">
+          <span className="font-semibold text-gray-500 uppercase tracking-wider flex-shrink-0">#</span>
+          <span className="text-gray-300">|</span>
+          <span className="font-semibold text-gray-500 uppercase tracking-wider flex-shrink-0">Tarea</span>
+          <span className="text-gray-300 ml-auto">Estado</span>
         </div>
-        <button
-          onClick={startAdding}
-          className="ml-2 flex-shrink-0 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
-        >
-          <Plus size={13} />
-          Añadir
+        <button onClick={() => { setAdding(true); setNewName(''); }}
+          className="ml-3 flex-shrink-0 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors">
+          <Plus size={13} /> Añadir
         </button>
       </div>
 
-      {/* Lista de tareas */}
+      {/* Hint */}
+      <div className="px-4 py-1.5 bg-gray-50 border-b border-gray-100">
+        <p className="text-xs text-gray-400">
+          Arrastra al <span className="font-medium text-gray-500">#</span> para reordenar ·
+          al <span className="font-medium text-gray-500">nombre</span> para asignar
+        </p>
+      </div>
+
+      {/* Lista */}
       <div
         className="flex-1 overflow-y-auto py-1"
-        onDragOver={e => { e.preventDefault(); setIsDragOverRoot(true); }}
-        onDragLeave={() => setIsDragOverRoot(false)}
-        onDrop={handleRootDrop}
-        style={{ background: isDragOverRoot && dragState ? '#fafafa' : 'transparent' }}
+        onDragOver={e => e.preventDefault()}
+        onDrop={onRootDrop}
       >
         {tree.length === 0 && !adding ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
             <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xl">+</div>
             <p className="text-sm text-gray-400 font-medium">Sin tareas</p>
-            <p className="text-xs text-gray-300">Haz clic en "Añadir" para crear tu primera tarea</p>
+            <p className="text-xs text-gray-300">Haz clic en "Añadir" para comenzar</p>
           </div>
         ) : (
           <>
@@ -193,34 +301,34 @@ export default function TaskPanel({ onEdit }) {
               <TaskRow
                 key={task.id}
                 task={task}
+                depth={0}
                 onEdit={onEdit}
-                dragState={dragState}
-                setDragState={setDragState}
+                draggingId={draggingId}
+                setDraggingId={setDraggingId}
+                dropTarget={dropTarget}
+                setDropTarget={setDropTarget}
               />
             ))}
 
-            {/* Inline quick-add row */}
             {adding && (
-              <div className="flex items-center gap-1.5 px-3 py-2 mx-1 rounded-lg border border-blue-300 bg-blue-50">
-                <input
-                  autoFocus
-                  type="text"
-                  value={newName}
+              <div className="flex items-center gap-1.5 px-3 py-2 mx-1 rounded-lg border border-blue-300 bg-blue-50 mt-1">
+                <input autoFocus type="text" value={newName}
                   onChange={e => setNewName(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') confirmAdd();
-                    if (e.key === 'Escape') cancelAdd();
-                  }}
+                  onKeyDown={e => { if(e.key==='Enter') confirmAdd(); if(e.key==='Escape') cancelAdd(); }}
                   placeholder="Nombre de la tarea…"
                   className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400 min-w-0"
                 />
                 <button onClick={confirmAdd}
-                  className="w-6 h-6 rounded flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white flex-shrink-0 transition-colors">
-                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  className="w-6 h-6 rounded flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white flex-shrink-0">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </button>
                 <button onClick={cancelAdd}
-                  className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex-shrink-0 transition-colors">
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex-shrink-0">
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                    <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
                 </button>
               </div>
             )}
@@ -228,9 +336,9 @@ export default function TaskPanel({ onEdit }) {
         )}
       </div>
 
-      {/* Footer: estadísticas */}
+      {/* Footer */}
       {tasks.length > 0 && (
-        <div className="border-t border-gray-100 px-4 py-2.5 flex items-center justify-between">
+        <div className="border-t border-gray-100 px-4 py-2 flex items-center justify-between">
           <span className="text-xs text-gray-400">{tasks.length} {tasks.length === 1 ? 'tarea' : 'tareas'}</span>
           <div className="flex gap-2">
             {Object.entries(STATUSES).map(([key, s]) => {
