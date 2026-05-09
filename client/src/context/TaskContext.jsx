@@ -26,13 +26,21 @@ export const calcProgress = (taskId, allTasks) => {
   return Math.round(avg);
 };
 
-/** Recalcula start/end del padre basándose en sus hijos */
+/** Solo expande el padre si un hijo se sale de sus límites. Nunca lo encoge. */
 const recalcParent = (parentId, tasks) => {
+  const parent   = tasks.find(t => t.id === parentId);
   const children = tasks.filter(t => t.parentId === parentId);
-  if (!children.length) return tasks;
-  const minStart = children.reduce((m, c) => c.start < m ? c.start : m, children[0].start);
-  const maxEnd   = children.reduce((m, c) => c.end   > m ? c.end   : m, children[0].end);
-  return tasks.map(t => t.id === parentId ? { ...t, start: minStart, end: maxEnd } : t);
+  if (!parent || !children.length) return tasks;
+
+  const childMinStart = children.reduce((m, c) => c.start < m ? c.start : m, children[0].start);
+  const childMaxEnd   = children.reduce((m, c) => c.end   > m ? c.end   : m, children[0].end);
+
+  // Solo actualiza si un hijo sobrepasa el límite actual del padre
+  const newStart = childMinStart < parent.start ? childMinStart : parent.start;
+  const newEnd   = childMaxEnd   > parent.end   ? childMaxEnd   : parent.end;
+
+  if (newStart === parent.start && newEnd === parent.end) return tasks;
+  return tasks.map(t => t.id === parentId ? { ...t, start: newStart, end: newEnd } : t);
 };
 
 export function TaskProvider({ children }) {

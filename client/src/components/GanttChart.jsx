@@ -672,11 +672,19 @@ export default function GanttChart({ onEditTask }) {
                         {task.name}
                       </span>
                     )}
-                    {/* Resize handles */}
-                    <div data-handle="left" style={{position:'absolute',left:0,top:0,width:8,height:'100%',cursor:'ew-resize',zIndex:3}}
-                      onMouseDown={e=>startBarDrag(e,task,'resize-left',e.currentTarget.parentElement)}/>
-                    <div data-handle="right" style={{position:'absolute',right:0,top:0,width:8,height:'100%',cursor:'ew-resize',zIndex:3}}
-                      onMouseDown={e=>startBarDrag(e,task,'resize-right',e.currentTarget.parentElement)}/>
+                    {/* Resize handles — más anchos para agarrar fácil */}
+                    <div data-handle="left"
+                      style={{position:'absolute',left:0,top:0,width:14,height:'100%',cursor:'ew-resize',zIndex:3,borderRadius:'4px 0 0 4px',display:'flex',alignItems:'center',justifyContent:'center'}}
+                      onMouseDown={e=>startBarDrag(e,task,'resize-left',e.currentTarget.parentElement)}
+                    >
+                      {isHovered && <div style={{width:2,height:'60%',background:task.color+'99',borderRadius:1,pointerEvents:'none'}}/>}
+                    </div>
+                    <div data-handle="right"
+                      style={{position:'absolute',right:0,top:0,width:14,height:'100%',cursor:'ew-resize',zIndex:3,borderRadius:'0 4px 4px 0',display:'flex',alignItems:'center',justifyContent:'center'}}
+                      onMouseDown={e=>startBarDrag(e,task,'resize-right',e.currentTarget.parentElement)}
+                    >
+                      {isHovered && <div style={{width:2,height:'60%',background:task.color+'99',borderRadius:1,pointerEvents:'none'}}/>}
+                    </div>
 
                     {/* ── Dependency connection circles (show on hover or while dragging) ── */}
                     {(isHovered || (depDrag && depDrag.fromId===task.id)) && (
