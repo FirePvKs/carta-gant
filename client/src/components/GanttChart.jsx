@@ -135,44 +135,24 @@ const ZoomMoveBar = ({ zoom, setZoom, selectedTask, moveStep, setMoveStep, stepL
   const idx = ZOOMS.findIndex(z=>z.k===zoom);
   return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px',height:40,borderBottom:'1px solid #e5e7eb',background:'#fff',flexShrink:0,gap:12}}>
-
-      {/* Move controls — solo visible cuando hay tarea seleccionada */}
       <div style={{display:'flex',alignItems:'center',gap:6,minWidth:220,opacity: selectedTask ? 1 : 0, pointerEvents: selectedTask ? 'all' : 'none', transition:'opacity 0.15s'}}>
-        <span style={{fontSize:11,color:'#6b7280',fontWeight:500,whiteSpace:'nowrap',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>
-          {selectedTask?.name ?? ''}
-        </span>
-        {/* Flecha izquierda */}
-        <button onClick={()=>onMove(-1)}
-          style={{width:26,height:26,borderRadius:6,border:'1px solid #e5e7eb',background:'#f9fafb',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,color:'#374151',flexShrink:0}}
-          title="Mover izquierda (←)">
-          ◀
-        </button>
-        {/* Contador de pasos */}
+        <span style={{fontSize:11,color:'#6b7280',fontWeight:500,whiteSpace:'nowrap',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis'}}>{selectedTask?.name ?? ''}</span>
+        <button onClick={()=>onMove(-1)} title="Mover izquierda (←)"
+          style={{width:26,height:26,borderRadius:6,border:'1px solid #e5e7eb',background:'#f9fafb',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,color:'#374151',flexShrink:0}}>◀</button>
         <div style={{display:'flex',alignItems:'center',gap:3}}>
-          <button onClick={()=>setMoveStep(s=>Math.max(1,s-1))}
-            style={{width:18,height:18,borderRadius:4,border:'1px solid #e5e7eb',background:'#f9fafb',cursor:'pointer',fontSize:11,color:'#374151',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
-          <span style={{minWidth:28,textAlign:'center',fontSize:12,fontWeight:600,color:'#374151',background:'#f3f4f6',borderRadius:4,padding:'2px 4px'}}>
-            {moveStep}{stepLabel}
-          </span>
-          <button onClick={()=>setMoveStep(s=>s+1)}
-            style={{width:18,height:18,borderRadius:4,border:'1px solid #e5e7eb',background:'#f9fafb',cursor:'pointer',fontSize:11,color:'#374151',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
+          <button onClick={()=>setMoveStep(s=>Math.max(1,s-1))} style={{width:18,height:18,borderRadius:4,border:'1px solid #e5e7eb',background:'#f9fafb',cursor:'pointer',fontSize:11,color:'#374151',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
+          <span style={{minWidth:28,textAlign:'center',fontSize:12,fontWeight:600,color:'#374151',background:'#f3f4f6',borderRadius:4,padding:'2px 4px'}}>{moveStep}{stepLabel}</span>
+          <button onClick={()=>setMoveStep(s=>s+1)} style={{width:18,height:18,borderRadius:4,border:'1px solid #e5e7eb',background:'#f9fafb',cursor:'pointer',fontSize:11,color:'#374151',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
         </div>
-        {/* Flecha derecha */}
-        <button onClick={()=>onMove(1)}
-          style={{width:26,height:26,borderRadius:6,border:'1px solid #e5e7eb',background:'#f9fafb',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,color:'#374151',flexShrink:0}}
-          title="Mover derecha (→)">
-          ▶
-        </button>
+        <button onClick={()=>onMove(1)} title="Mover derecha (→)"
+          style={{width:26,height:26,borderRadius:6,border:'1px solid #e5e7eb',background:'#f9fafb',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,color:'#374151',flexShrink:0}}>▶</button>
       </div>
-
-      {/* Zoom slider */}
       <div style={{display:'flex',alignItems:'center',gap:10}}>
         <div style={{display:'flex',alignItems:'center',position:'relative'}}>
           <div style={{position:'absolute',left:8,right:8,top:'50%',height:2,background:'#d1d5db',transform:'translateY(-50%)'}}/>
           {ZOOMS.map((z,i)=>(
             <button key={z.k} onClick={()=>setZoom(z.k)} title={z.l}
-              style={{width:i===idx?14:10,height:i===idx?14:10,borderRadius:'50%',border:`2px solid ${i===idx?'#374151':'#9ca3af'}`,background:i===idx?'#374151':'white',cursor:'pointer',position:'relative',zIndex:1,marginLeft:i>0?20:0,flexShrink:0,transition:'all 0.15s'}}
-            />
+              style={{width:i===idx?14:10,height:i===idx?14:10,borderRadius:'50%',border:`2px solid ${i===idx?'#374151':'#9ca3af'}`,background:i===idx?'#374151':'white',cursor:'pointer',position:'relative',zIndex:1,marginLeft:i>0?20:0,flexShrink:0,transition:'all 0.15s'}}/>
           ))}
         </div>
         <span style={{fontSize:12,fontWeight:500,color:'#374151',minWidth:52}}>{ZOOMS[idx]?.l}</span>
@@ -181,13 +161,14 @@ const ZoomMoveBar = ({ zoom, setZoom, selectedTask, moveStep, setMoveStep, stepL
   );
 };
 
-// ─── Main component ─────────────────────────────────────────────────────────
 export default function GanttChart({ onEditTask }) {
-  const { tasks, hiddenParents, toggleParent, updateTask, addDependency } = useTasks();
+  const { tasks, hiddenParents, toggleParent, updateTask, addDependency, removeDependency } = useTasks();
   const [zoom, setZoom] = useState('semanas');
   const [hoveredBar, setHoveredBar] = useState(null);   // taskId
   const [depDrag, setDepDrag]       = useState(null);   // { fromId, fromSide, x, y }
-  const [hoveredCircle, setHoveredCircle] = useState(null); // { taskId, side }
+  const [hoveredCircle, setHoveredCircle] = useState(null);
+  const [progressDrag, setProgressDrag]   = useState(null); // { taskId, startX, origProgress }
+  const [deleteDepModal, setDeleteDepModal] = useState(null); // { taskId, depId }
   const scrollRef = useRef(null);
   const panRef    = useRef({ active:false, sx:0, sy:0, sl:0, st:0 });
   const dragRef   = useRef(null);
@@ -430,9 +411,12 @@ export default function GanttChart({ onEditTask }) {
   // ── Dependency drag ───────────────────────────────────────────────────────
   const startDepDrag = (e, taskId, side) => {
     e.preventDefault(); e.stopPropagation();
-    const el = scrollRef.current;
+    const el   = scrollRef.current;
     const rect = el.getBoundingClientRect();
-    setDepDrag({ fromId:taskId, fromSide:side, x:e.clientX-rect.left+el.scrollLeft, y:e.clientY-rect.top+el.scrollTop });
+    // Coordenadas relativas al contenido del SVG (mismo sistema que las barras)
+    const x = e.clientX - rect.left + el.scrollLeft - TASK_W;
+    const y = e.clientY - rect.top  + el.scrollTop  - HDR_H;
+    setDepDrag({ fromId:taskId, fromSide:side, x, y });
   };
 
   useEffect(()=>{
@@ -440,7 +424,9 @@ export default function GanttChart({ onEditTask }) {
     const el = scrollRef.current;
     const move = e => {
       const rect = el.getBoundingClientRect();
-      setDepDrag(p => ({ ...p, x:e.clientX-rect.left+el.scrollLeft, y:e.clientY-rect.top+el.scrollTop }));
+      const x = e.clientX - rect.left + el.scrollLeft - TASK_W;
+      const y = e.clientY - rect.top  + el.scrollTop  - HDR_H;
+      setDepDrag(p => ({ ...p, x, y }));
     };
     const up = e => {
       // Check if released on a circle
@@ -457,6 +443,22 @@ export default function GanttChart({ onEditTask }) {
     document.addEventListener('mouseup', up);
     return ()=>{ document.removeEventListener('mousemove',move); document.removeEventListener('mouseup',up); };
   }, [depDrag, addDependency]);
+
+  // ── Progress drag (triangle thumb) ───────────────────────────────────────
+  useEffect(()=>{
+    if(!progressDrag) return;
+    const move = e => {
+      const dx   = e.clientX - progressDrag.startX;
+      const pxPerPct = progressDrag.barBw / 100;
+      const raw  = progressDrag.origProgress + dx / pxPerPct;
+      const snapped = Math.round(Math.max(0, Math.min(100, raw)) / 10) * 10;
+      updateTask(progressDrag.taskId, { progress: snapped });
+    };
+    const up = () => setProgressDrag(null);
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup',   up);
+    return ()=>{ document.removeEventListener('mousemove',move); document.removeEventListener('mouseup',up); };
+  }, [progressDrag, updateTask]);
 
   // ── Bar position helper ───────────────────────────────────────────────────
   const barPos = task => {
@@ -491,6 +493,7 @@ export default function GanttChart({ onEditTask }) {
   const chartH = Math.max(visibleTasks.length*ROW_H, 300);
 
   return (
+    <>
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
       <ZoomMoveBar zoom={zoom} setZoom={setZoom} selectedTask={tasks.find(t=>t.id===selectedTaskId)??null} moveStep={moveStep} setMoveStep={setMoveStep} stepLabel={stepLabel} onMove={moveSelectedTask}/>
 
@@ -584,7 +587,7 @@ export default function GanttChart({ onEditTask }) {
                   </marker>
                 </defs>
 
-                {/* Existing dependency arrows */}
+                {/* Existing dependency arrows — orthogonal routing avoids bars */}
                 {visibleTasks.map(task=>{
                   if(!task.deps?.length) return null;
                   return task.deps.map(dep=>{
@@ -595,27 +598,52 @@ export default function GanttChart({ onEditTask }) {
                     const toIdx    = visibleTasks.findIndex(t=>t.id===task.id);
                     if(fromIdx<0||toIdx<0) return null;
                     const from = visibleTasks[fromIdx];
-                    const to   = visibleTasks[toIdx];
                     const { bx: fbx, bw: fbw } = barPos(from);
-                    const { bx: tbx, bw: tbw } = barPos(to);
-                    // Origin point based on fromSide
+                    const { bx: tbx, bw: tbw } = barPos(task);
+                    const STUB = 14; // px de salida horizontal antes de doblar
+                    const R    = 4;  // radio de las esquinas redondeadas
+                    // Puntos de inicio y fin
                     const x1 = fromSide === 'start' ? fbx : fbx + fbw;
                     const y1 = fromIdx * ROW_H + ROW_H / 2;
-                    // Target point based on toSide
-                    const x2 = toSide === 'start' ? tbx : tbx + tbw;
-                    const y2 = toIdx * ROW_H + ROW_H / 2;
-                    const mx = (x1 + x2) / 2;
+                    const x2 = toSide  === 'start' ? tbx : tbx + tbw;
+                    const y2 = toIdx   * ROW_H + ROW_H / 2;
+                    // Dirección de salida (+1 derecha, -1 izquierda)
+                    const dExit  = fromSide === 'end'   ?  1 : -1;
+                    const dEntry = toSide   === 'start' ? -1 :  1;
+                    // Puntos de stub
+                    const sx = x1 + dExit  * STUB;
+                    const tx = x2 + dEntry * STUB;
+                    const goDown = toIdx >= fromIdx;
+                    // Y de routing: borde inferior de la fila origen si va hacia abajo,
+                    // borde superior si va hacia arriba — nunca pasa por el centro de otra barra
+                    const routeY = goDown
+                      ? fromIdx * ROW_H + ROW_H - 4   // bajo la barra origen
+                      : fromIdx * ROW_H + 4;           // sobre la barra origen
+                    // Path ortogonal limpio: salida horizontal → vertical → entrada horizontal
+                    // El tramo vertical va a la mitad exacta entre las dos filas
+                    const midY = (y1 + y2) / 2;
+                    const path = fromIdx === toIdx
+                      // Misma fila: loop por debajo
+                      ? `M${x1},${y1} l${dExit*STUB},0 l0,${ROW_H*0.55} l${tx-sx},0 l0,${-ROW_H*0.55} L${x2},${y2}`
+                      // Filas distintas: 3 segmentos limpios con esquinas suaves
+                      : `M${x1},${y1} `
+                        + `L${sx},${y1} `
+                        + `Q${sx},${midY} ${sx},${midY} `
+                        + `L${tx},${midY} `
+                        + `Q${tx},${midY} ${tx},${y2} `
+                        + `L${x2},${y2}`;
                     return (
-                      <path key={`${depId}-${task.id}`}
-                        d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
-                        fill="none" stroke="#64748b" strokeWidth="1.5"
-                        markerEnd="url(#arrowhead)"
-                      />
+                      <g key={`${depId}-${task.id}`}>
+                        <path d={path} fill="none" stroke="#64748b" strokeWidth="1.5" markerEnd="url(#arrowhead)" pointerEvents="none"/>
+                        <path d={path} fill="none" stroke="transparent" strokeWidth="10" style={{cursor:'pointer'}}
+                          onDoubleClick={e=>{ e.stopPropagation(); setDeleteDepModal({taskId:task.id, depId}); }}
+                        />
+                      </g>
                     );
                   });
                 })}
 
-                {/* Live dep drag line */}
+                {/* Live dep drag line — bezier flexible que sigue el mouse */}
                 {depDrag && (()=>{
                   const fromIdx = visibleTasks.findIndex(t=>t.id===depDrag.fromId);
                   if(fromIdx<0) return null;
@@ -623,12 +651,20 @@ export default function GanttChart({ onEditTask }) {
                   const { bx, bw } = barPos(from);
                   const fx = depDrag.fromSide==='start' ? bx : bx+bw;
                   const fy = fromIdx*ROW_H + ROW_H/2;
-                  // depDrag.x/y are relative to scrollContainer (includes scrollLeft/Top)
                   const tx = depDrag.x;
-                  const ty = depDrag.y - HDR_H;
+                  const ty = depDrag.y;
+                  // Salida horizontal según el lado origen, luego curva libre al cursor
+                  const dExit = depDrag.fromSide==='start' ? -1 : 1;
+                  const dist  = Math.abs(tx - fx);
+                  const cpLen = Math.max(40, dist * 0.45);
+                  const cp1x  = fx + dExit * cpLen;
+                  const cp1y  = fy;
+                  const cp2x  = tx - (tx > fx ? 1 : -1) * Math.min(cpLen, dist * 0.3);
+                  const cp2y  = ty;
                   return (
-                    <line x1={fx} y1={fy} x2={tx} y2={ty}
-                      stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5,4"
+                    <path
+                      d={`M${fx},${fy} C${cp1x},${cp1y} ${cp2x},${cp2y} ${tx},${ty}`}
+                      fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="6,4"
                       markerEnd="url(#arrowhead)"
                     />
                   );
@@ -638,47 +674,64 @@ export default function GanttChart({ onEditTask }) {
               {/* ── Task bars ── */}
               {visibleTasks.map((task, rowIdx)=>{
                 const { bx, bw } = barPos(task);
-                const isParent = task.isParent;
-
-                // Parent bars: thinner, centered, different style
-                const bh = isParent ? ROW_H * 0.28 : ROW_H * 0.58;
+                const isParent  = task.isParent;
+                const hasDeps   = task.deps?.length > 0;
+                // Tasks that have dependencies cannot be moved (they follow their deps)
+                const isLocked  = hasDeps;
+                const bh = isParent ? ROW_H * 0.28 : ROW_H * 0.52;
                 const by = isParent
-                  ? rowIdx*ROW_H + (ROW_H - bh) / 2   // vertically centered but thin
-                  : rowIdx*ROW_H + ROW_H * 0.21;
-
+                  ? rowIdx*ROW_H + (ROW_H - bh) / 2
+                  : rowIdx*ROW_H + ROW_H * 0.18;
                 const isHovered  = hoveredBar === task.id;
                 const isSelected = selectedTaskId === task.id;
+                const pct        = task.computedProgress;
 
+                // CIRCLE_PAD: extra space around bar so outer elements stay in hover zone
+                const CPAD = CIRCLE_R * 2 + 10;
                 return (
+                  // Outer wrapper — covers bar + circles + triangle area
                   <div key={task.id}
+                    style={{
+                      position:'absolute',
+                      left: bx - CPAD,
+                      top: by - 14,   // room for triangle below
+                      width: bw + CPAD * 2,
+                      height: bh + 28,  // room above and below
+                      zIndex: 4,
+                      overflow:'visible',
+                    }}
+                    onMouseEnter={()=>setHoveredBar(task.id)}
+                    onMouseLeave={()=>setHoveredBar(null)}
+                  >
+                  {/* Actual bar */}
+                  <div
                     data-bar-id={task.id}
                     style={{
-                      position:'absolute', left:bx, top:by, width:bw, height:bh,
+                      position:'absolute',
+                      left: CPAD, top: 14,
+                      width: bw, height: bh,
                       background: isParent ? task.color+'18' : task.color+'28',
-                      border: isParent
-                        ? `2px solid ${task.color}90`
-                        : `1.5px solid ${task.color}60`,
+                      border: isParent ? `2px solid ${task.color}90` : `1.5px solid ${task.color}60`,
                       outline: isSelected ? `2px solid ${task.color}` : 'none',
                       outlineOffset: 2,
                       borderRadius: isParent ? 3 : 4,
                       overflow:'visible',
-                      cursor: selectedTaskId===task.id ? 'default' : 'pointer',
-                      zIndex:4,
+                      cursor: isLocked ? 'not-allowed' : 'pointer',
                     }}
-                    onMouseEnter={()=>setHoveredBar(task.id)}
-                    onMouseLeave={()=>setHoveredBar(null)}
-                    onClick={e=>{ e.stopPropagation(); setSelectedTaskId(id=>id===task.id?null:task.id); }}
+                    onClick={e=>{ e.stopPropagation(); if(!isLocked) setSelectedTaskId(id=>id===task.id?null:task.id); }}
                     onDoubleClick={e=>{ e.stopPropagation(); onEditTask(task); }}
                   >
                     {/* Progress fill */}
-                    <div style={{height:'100%',width:`${task.computedProgress}%`,background:task.color,borderRadius:3,pointerEvents:'none'}}/>
-                    {/* Label */}
+                    <div style={{height:'100%',width:`${pct}%`,background:task.color,borderRadius:3,pointerEvents:'none'}}/>
+
+                    {/* Label + % in center */}
                     {bw>36 && (
-                      <span style={{position:'absolute',left:6,top:'50%',transform:'translateY(-50%)',fontSize:11,color:'#fff',fontWeight:500,whiteSpace:'nowrap',pointerEvents:'none',textShadow:'0 1px 2px rgba(0,0,0,0.35)',zIndex:1}}>
-                        {task.name}
+                      <span style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',fontSize:11,color:'#fff',fontWeight:600,whiteSpace:'nowrap',pointerEvents:'none',textShadow:'0 1px 3px rgba(0,0,0,0.4)',zIndex:1,textAlign:'center'}}>
+                        {task.name}{pct > 0 ? ` · ${pct}%` : ''}
                       </span>
                     )}
-                    {/* Resize handles — más anchos para agarrar fácil */}
+
+                    {/* Resize handles */}
                     <div data-handle="left"
                       style={{position:'absolute',left:0,top:0,width:14,height:'100%',cursor:'ew-resize',zIndex:3,borderRadius:'4px 0 0 4px',display:'flex',alignItems:'center',justifyContent:'center'}}
                       onMouseDown={e=>startBarDrag(e,task,'resize-left',e.currentTarget.parentElement)}
@@ -692,54 +745,61 @@ export default function GanttChart({ onEditTask }) {
                       {isHovered && <div style={{width:2,height:'60%',background:task.color+'99',borderRadius:1,pointerEvents:'none'}}/>}
                     </div>
 
-                    {/* ── Dependency connection circles (show on hover or while dragging) ── */}
+                    {/* Progress thumb — triangle below bar, drag left/right */}
+                    {isHovered && !isParent && (
+                      <div
+                        title="Arrastra para cambiar el progreso"
+                        style={{
+                          position:'absolute',
+                          left: `calc(${pct}% - 7px)`,
+                          bottom: -12,
+                          width:14, height:12,
+                          cursor:'ew-resize', zIndex:12,
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                        }}
+                        onMouseDown={e=>{
+                          e.stopPropagation(); e.preventDefault();
+                          setProgressDrag({ taskId:task.id, startX:e.clientX, origProgress:pct, barBx:bx, barBw:bw });
+                        }}
+                      >
+                        <svg width="14" height="10" viewBox="0 0 14 10" style={{pointerEvents:'none'}}>
+                          <polygon points="7,0 14,10 0,10" fill={task.color} opacity="0.85"/>
+                        </svg>
+                      </div>
+                    )}
+
+                    {/* Dependency circles — offset outside bar to not clash with resize handles */}
                     {(isHovered || (depDrag && depDrag.fromId===task.id)) && (
                       <>
-                        {/* Start circle */}
-                        <div
-                          data-circle={`${task.id}-start`}
+                        <div data-circle={`${task.id}-start`}
                           onMouseDown={e=>startDepDrag(e,task.id,'start')}
                           onMouseEnter={()=>setHoveredCircle({taskId:task.id,side:'start'})}
                           onMouseLeave={()=>setHoveredCircle(null)}
-                          style={{
-                            position:'absolute',left:-CIRCLE_R,top:'50%',transform:'translateY(-50%)',
-                            width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',
-                            background: hoveredCircle?.taskId===task.id && hoveredCircle?.side==='start' ? '#3b82f6' : 'white',
-                            border:'2px solid #3b82f6',cursor:'crosshair',zIndex:10,
-                            boxShadow:'0 1px 4px rgba(59,130,246,0.4)',
-                          }}
+                          style={{position:'absolute',left:-(CIRCLE_R*2+8),top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id&&hoveredCircle?.side==='start'?'#3b82f6':'white',border:'2px solid #3b82f6',cursor:'crosshair',zIndex:10,boxShadow:'0 1px 4px rgba(59,130,246,0.4)'}}
                         />
-                        {/* End circle */}
-                        <div
-                          data-circle={`${task.id}-end`}
+                        <div data-circle={`${task.id}-end`}
                           onMouseDown={e=>startDepDrag(e,task.id,'end')}
                           onMouseEnter={()=>setHoveredCircle({taskId:task.id,side:'end'})}
                           onMouseLeave={()=>setHoveredCircle(null)}
-                          style={{
-                            position:'absolute',right:-CIRCLE_R,top:'50%',transform:'translateY(-50%)',
-                            width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',
-                            background: hoveredCircle?.taskId===task.id && hoveredCircle?.side==='end' ? '#3b82f6' : 'white',
-                            border:'2px solid #3b82f6',cursor:'crosshair',zIndex:10,
-                            boxShadow:'0 1px 4px rgba(59,130,246,0.4)',
-                          }}
+                          style={{position:'absolute',right:-(CIRCLE_R*2+8),top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id&&hoveredCircle?.side==='end'?'#3b82f6':'white',border:'2px solid #3b82f6',cursor:'crosshair',zIndex:10,boxShadow:'0 1px 4px rgba(59,130,246,0.4)'}}
                         />
                       </>
                     )}
-                    {/* Show target circles on ALL bars when dragging a dep */}
                     {depDrag && depDrag.fromId!==task.id && (
                       <>
                         <div data-circle={`${task.id}-start`}
                           onMouseEnter={()=>setHoveredCircle({taskId:task.id,side:'start'})}
                           onMouseLeave={()=>setHoveredCircle(null)}
-                          style={{position:'absolute',left:-CIRCLE_R,top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id?'#22c55e':'white',border:'2px solid #22c55e',zIndex:10,cursor:'crosshair',boxShadow:'0 1px 4px rgba(34,197,94,0.4)'}}
+                          style={{position:'absolute',left:-(CIRCLE_R*2+6),top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id?'#22c55e':'white',border:'2px solid #22c55e',zIndex:10,cursor:'crosshair',boxShadow:'0 1px 4px rgba(34,197,94,0.4)'}}
                         />
                         <div data-circle={`${task.id}-end`}
                           onMouseEnter={()=>setHoveredCircle({taskId:task.id,side:'end'})}
                           onMouseLeave={()=>setHoveredCircle(null)}
-                          style={{position:'absolute',right:-CIRCLE_R,top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id?'#22c55e':'white',border:'2px solid #22c55e',zIndex:10,cursor:'crosshair',boxShadow:'0 1px 4px rgba(34,197,94,0.4)'}}
+                          style={{position:'absolute',right:-(CIRCLE_R*2+6),top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id?'#22c55e':'white',border:'2px solid #22c55e',zIndex:10,cursor:'crosshair',boxShadow:'0 1px 4px rgba(34,197,94,0.4)'}}
                         />
                       </>
                     )}
+                  </div>
                   </div>
                 );
               })}
@@ -748,5 +808,28 @@ export default function GanttChart({ onEditTask }) {
         </div>
       </div>
     </div>
+
+    {/* Delete dependency modal */}
+    {deleteDepModal && (
+      <div style={{position:'fixed',inset:0,zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.35)'}}
+        onClick={()=>setDeleteDepModal(null)}>
+        <div style={{background:'#fff',borderRadius:12,padding:'20px 24px',boxShadow:'0 8px 32px rgba(0,0,0,0.18)',minWidth:260,display:'flex',flexDirection:'column',gap:12}}
+          onClick={e=>e.stopPropagation()}>
+          <p style={{fontSize:14,fontWeight:500,color:'#374151',margin:0}}>¿Eliminar esta dependencia?</p>
+          <p style={{fontSize:12,color:'#9ca3af',margin:0}}>La conexión entre las tareas se eliminará permanentemente.</p>
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+            <button onClick={()=>setDeleteDepModal(null)}
+              style={{padding:'6px 14px',borderRadius:8,border:'1px solid #e5e7eb',background:'#f9fafb',fontSize:13,cursor:'pointer',color:'#374151'}}>
+              Cancelar
+            </button>
+            <button onClick={()=>{ removeDependency(deleteDepModal.taskId, deleteDepModal.depId); setDeleteDepModal(null); }}
+              style={{padding:'6px 14px',borderRadius:8,border:'none',background:'#ef4444',fontSize:13,cursor:'pointer',color:'#fff',fontWeight:500}}>
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
