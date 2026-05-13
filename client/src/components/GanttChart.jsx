@@ -252,9 +252,17 @@ export default function GanttChart({ onEditTask }) {
     const add = (id, depth) => {
       const t = tasks.find(x=>x.id===id); if(!t) return;
       result.push({...t, _depth:depth});
-      if(!hiddenParents.has(id)) tasks.filter(x=>x.parentId===id).forEach(c=>add(c.id, depth+1));
+      if(!hiddenParents.has(id)) {
+        tasks
+          .filter(x=>x.parentId===id)
+          .sort((a,b)=>(a.order??0)-(b.order??0))
+          .forEach(c=>add(c.id, depth+1));
+      }
     };
-    tasks.filter(t=>!t.parentId).forEach(t=>add(t.id,0));
+    tasks
+      .filter(t=>!t.parentId)
+      .sort((a,b)=>(a.order??0)-(b.order??0))
+      .forEach(t=>add(t.id,0));
     return result;
   }, [tasks, hiddenParents]);
 
