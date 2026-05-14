@@ -286,11 +286,16 @@ export default function GanttChart({ onEditTask }) {
     const el = scrollRef.current; if(!el) return;
     const down = e => {
       if(e.button!==0) return;
-      // Si el clic viene de dentro de una barra, no iniciar pan
-      if(e.target.closest('[data-bar-id]')) return;
-      if(e.target.dataset.handle || e.target.dataset.circle) return;
+      // Bloquea si el clic viene de dentro de una barra, handle o círculo
+      if(e.target.closest('[data-bar-id]'))  return;
+      if(e.target.closest('[data-handle]'))  return;
+      if(e.target.closest('[data-circle]'))  return;
+      if(dragRef.current) return;
+      // Verifica que el clic sea dentro del contenedor scroll
+      if(!el.contains(e.target)) return;
       panRef.current = { active:true, sx:e.clientX, sy:e.clientY, sl:el.scrollLeft, st:el.scrollTop };
       el.style.cursor = 'grabbing';
+      e.stopPropagation();
     };
     const move = e => {
       if(!panRef.current.active) return;
@@ -395,24 +400,12 @@ export default function GanttChart({ onEditTask }) {
 
   const startBarDrag = (e, task, type, barEl) => {
     e.preventDefault(); e.stopPropagation();
-    // Fecha donde el usuario tomó la barra
-    const grabDate     = clientXToDate(e.clientX);
-    const taskStart    = new Date(task.start + 'T00:00:00');
-    // grabOffsetDays: cuántos días desde el inicio de la tarea agarró el usuario
-    const grabOffsetDays = (grabDate - taskStart) / MS_DAY;
-    const durationDays   = Math.round(
-      (new Date(task.end + 'T00:00:00') - taskStart) / MS_DAY
-    ) + 1;
-    dragRef.current = {
-      taskId: task.id, type,
-      grabOffsetDays,
-      durationDays,
-      origStart: task.start,
-      origEnd:   task.end,
-      lastSnap: null,
-      el: barEl,
-      preview: null,
-    };
+    // Setear inmediatamente para que el handler del pan vea dragRef.current = truthy
+    dragRef.current = { taskId: task.id, type, origStart: task.start, origEnd: task.end, lastSnap: null, el: barEl, preview: null, grabOffsetDays: 0, durationDays: 1 };
+    const grabDate        = clientXToDate(e.clientX);
+    const taskStart       = new Date(task.start + 'T00:00:00');
+    dragRef.current.grabOffsetDays = (grabDate - taskStart) / MS_DAY;
+    dragRef.current.durationDays   = Math.round((new Date(task.end + 'T00:00:00') - taskStart) / MS_DAY) + 1;
     document.body.style.cursor = type === 'move' ? 'grabbing' : 'ew-resize';
   };
 
@@ -684,40 +677,18 @@ export default function GanttChart({ onEditTask }) {
                 const { bx, bw } = barPos(task);
                 const isParent  = task.isParent;
                 const hasDeps   = task.deps?.length > 0;
-                // Tasks that have dependencies cannot be moved (they follow their deps)
                 const isLocked  = hasDeps;
                 const bh = isParent ? ROW_H * 0.28 : ROW_H * 0.52;
-                const by = isParent
-                  ? rowIdx*ROW_H + (ROW_H - bh) / 2
-                  : rowIdx*ROW_H + ROW_H * 0.18;
+                const by = isParent ? rowIdx*ROW_H + (ROW_H - bh) / 2 : rowIdx*ROW_H + ROW_H * 0.18;
                 const isHovered  = hoveredBar === task.id;
                 const isSelected = selectedTaskId === task.id;
                 const pct        = task.computedProgress;
 
-                // CIRCLE_PAD: extra space around bar so outer elements stay in hover zone
-                const CPAD = CIRCLE_R * 2 + 10;
                 return (
-                  // Outer wrapper — covers bar + circles + triangle area
                   <div key={task.id}
-                    style={{
-                      position:'absolute',
-                      left: bx - CPAD,
-                      top: by - 14,   // room for triangle below
-                      width: bw + CPAD * 2,
-                      height: bh + 28,  // room above and below
-                      zIndex: 4,
-                      overflow:'visible',
-                    }}
-                    onMouseEnter={()=>setHoveredBar(task.id)}
-                    onMouseLeave={()=>setHoveredBar(null)}
-                  >
-                  {/* Actual bar */}
-                  <div
                     data-bar-id={task.id}
                     style={{
-                      position:'absolute',
-                      left: CPAD, top: 14,
-                      width: bw, height: bh,
+                      position:'absolute', left:bx, top:by, width:bw, height:bh,
                       background: isParent ? task.color+'18' : task.color+'28',
                       border: isParent ? `2px solid ${task.color}90` : `1.5px solid ${task.color}60`,
                       outline: isSelected ? `2px solid ${task.color}` : 'none',
@@ -725,50 +696,48 @@ export default function GanttChart({ onEditTask }) {
                       borderRadius: isParent ? 3 : 4,
                       overflow:'visible',
                       cursor: isLocked ? 'not-allowed' : 'pointer',
+                      zIndex: 4,
                     }}
+                    onMouseEnter={()=>{ clearTimeout(window._hoverTimer); setHoveredBar(task.id); }}
+                    onMouseLeave={()=>{ window._hoverTimer = setTimeout(()=>setHoveredBar(null), 120); }}
                     onClick={e=>{ e.stopPropagation(); if(!isLocked) setSelectedTaskId(id=>id===task.id?null:task.id); }}
                     onDoubleClick={e=>{ e.stopPropagation(); onEditTask(task); }}
                   >
                     {/* Progress fill */}
                     <div style={{height:'100%',width:`${pct}%`,background:task.color,borderRadius:3,pointerEvents:'none'}}/>
 
-                    {/* Label + % in center */}
+                    {/* Label */}
                     {bw>36 && (
                       <span style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',fontSize:11,color:'#fff',fontWeight:600,whiteSpace:'nowrap',pointerEvents:'none',textShadow:'0 1px 3px rgba(0,0,0,0.4)',zIndex:1,textAlign:'center'}}>
-                        {task.name}{pct > 0 ? ` · ${pct}%` : ''}
+                        {task.name}{pct>0?` · ${pct}%`:''}
                       </span>
                     )}
 
                     {/* Resize handles */}
                     <div data-handle="left"
-                      style={{position:'absolute',left:0,top:0,width:14,height:'100%',cursor:'ew-resize',zIndex:3,borderRadius:'4px 0 0 4px',display:'flex',alignItems:'center',justifyContent:'center'}}
-                      onMouseDown={e=>startBarDrag(e,task,'resize-left',e.currentTarget.parentElement)}
+                      style={{position:'absolute',left:0,top:0,width:14,height:'100%',cursor:'ew-resize',zIndex:6,borderRadius:'4px 0 0 4px',display:'flex',alignItems:'center',justifyContent:'center'}}
+                      onMouseEnter={()=>{ clearTimeout(window._hoverTimer); setHoveredBar(task.id); }}
+                      onMouseLeave={()=>{ window._hoverTimer = setTimeout(()=>setHoveredBar(null), 120); }}
+                      onMouseDown={e=>{ e.stopPropagation(); e.preventDefault(); startBarDrag(e,task,'resize-left',e.currentTarget.parentElement); }}
                     >
                       {isHovered && <div style={{width:2,height:'60%',background:task.color+'99',borderRadius:1,pointerEvents:'none'}}/>}
                     </div>
                     <div data-handle="right"
-                      style={{position:'absolute',right:0,top:0,width:14,height:'100%',cursor:'ew-resize',zIndex:3,borderRadius:'0 4px 4px 0',display:'flex',alignItems:'center',justifyContent:'center'}}
-                      onMouseDown={e=>startBarDrag(e,task,'resize-right',e.currentTarget.parentElement)}
+                      style={{position:'absolute',right:0,top:0,width:14,height:'100%',cursor:'ew-resize',zIndex:6,borderRadius:'0 4px 4px 0',display:'flex',alignItems:'center',justifyContent:'center'}}
+                      onMouseEnter={()=>{ clearTimeout(window._hoverTimer); setHoveredBar(task.id); }}
+                      onMouseLeave={()=>{ window._hoverTimer = setTimeout(()=>setHoveredBar(null), 120); }}
+                      onMouseDown={e=>{ e.stopPropagation(); e.preventDefault(); startBarDrag(e,task,'resize-right',e.currentTarget.parentElement); }}
                     >
                       {isHovered && <div style={{width:2,height:'60%',background:task.color+'99',borderRadius:1,pointerEvents:'none'}}/>}
                     </div>
 
-                    {/* Progress thumb — triangle below bar, drag left/right */}
+                    {/* Progress thumb — triangle below bar */}
                     {isHovered && !isParent && (
                       <div
-                        title="Arrastra para cambiar el progreso"
-                        style={{
-                          position:'absolute',
-                          left: `calc(${pct}% - 7px)`,
-                          bottom: -12,
-                          width:14, height:12,
-                          cursor:'ew-resize', zIndex:12,
-                          display:'flex', alignItems:'center', justifyContent:'center',
-                        }}
-                        onMouseDown={e=>{
-                          e.stopPropagation(); e.preventDefault();
-                          setProgressDrag({ taskId:task.id, startX:e.clientX, origProgress:pct, barBx:bx, barBw:bw });
-                        }}
+                        style={{position:'absolute',left:`calc(${pct}% - 7px)`,bottom:-12,width:14,height:12,cursor:'ew-resize',zIndex:8,display:'flex',alignItems:'center',justifyContent:'center'}}
+                        onMouseEnter={()=>{ clearTimeout(window._hoverTimer); setHoveredBar(task.id); }}
+                        onMouseLeave={()=>{ window._hoverTimer = setTimeout(()=>setHoveredBar(null), 120); }}
+                        onMouseDown={e=>{ e.stopPropagation(); e.preventDefault(); setProgressDrag({taskId:task.id,startX:e.clientX,origProgress:pct,barBx:bx,barBw:bw}); }}
                       >
                         <svg width="14" height="10" viewBox="0 0 14 10" style={{pointerEvents:'none'}}>
                           <polygon points="7,0 14,10 0,10" fill={task.color} opacity="0.85"/>
@@ -776,19 +745,19 @@ export default function GanttChart({ onEditTask }) {
                       </div>
                     )}
 
-                    {/* Dependency circles — offset outside bar to not clash with resize handles */}
+                    {/* Dependency circles */}
                     {(isHovered || (depDrag && depDrag.fromId===task.id)) && (
                       <>
                         <div data-circle={`${task.id}-start`}
-                          onMouseDown={e=>startDepDrag(e,task.id,'start')}
-                          onMouseEnter={()=>setHoveredCircle({taskId:task.id,side:'start'})}
-                          onMouseLeave={()=>setHoveredCircle(null)}
+                          onMouseEnter={()=>{ clearTimeout(window._hoverTimer); setHoveredBar(task.id); setHoveredCircle({taskId:task.id,side:'start'}); }}
+                          onMouseLeave={()=>{ setHoveredCircle(null); window._hoverTimer = setTimeout(()=>setHoveredBar(null), 120); }}
+                          onMouseDown={e=>{ e.stopPropagation(); startDepDrag(e,task.id,'start'); }}
                           style={{position:'absolute',left:-(CIRCLE_R*2+8),top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id&&hoveredCircle?.side==='start'?'#3b82f6':'white',border:'2px solid #3b82f6',cursor:'crosshair',zIndex:10,boxShadow:'0 1px 4px rgba(59,130,246,0.4)'}}
                         />
                         <div data-circle={`${task.id}-end`}
-                          onMouseDown={e=>startDepDrag(e,task.id,'end')}
-                          onMouseEnter={()=>setHoveredCircle({taskId:task.id,side:'end'})}
-                          onMouseLeave={()=>setHoveredCircle(null)}
+                          onMouseEnter={()=>{ clearTimeout(window._hoverTimer); setHoveredBar(task.id); setHoveredCircle({taskId:task.id,side:'end'}); }}
+                          onMouseLeave={()=>{ setHoveredCircle(null); window._hoverTimer = setTimeout(()=>setHoveredBar(null), 120); }}
+                          onMouseDown={e=>{ e.stopPropagation(); startDepDrag(e,task.id,'end'); }}
                           style={{position:'absolute',right:-(CIRCLE_R*2+8),top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id&&hoveredCircle?.side==='end'?'#3b82f6':'white',border:'2px solid #3b82f6',cursor:'crosshair',zIndex:10,boxShadow:'0 1px 4px rgba(59,130,246,0.4)'}}
                         />
                       </>
@@ -798,16 +767,15 @@ export default function GanttChart({ onEditTask }) {
                         <div data-circle={`${task.id}-start`}
                           onMouseEnter={()=>setHoveredCircle({taskId:task.id,side:'start'})}
                           onMouseLeave={()=>setHoveredCircle(null)}
-                          style={{position:'absolute',left:-(CIRCLE_R*2+6),top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id?'#22c55e':'white',border:'2px solid #22c55e',zIndex:10,cursor:'crosshair',boxShadow:'0 1px 4px rgba(34,197,94,0.4)'}}
+                          style={{position:'absolute',left:-(CIRCLE_R*2+8),top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id?'#22c55e':'white',border:'2px solid #22c55e',zIndex:10,cursor:'crosshair',boxShadow:'0 1px 4px rgba(34,197,94,0.4)'}}
                         />
                         <div data-circle={`${task.id}-end`}
                           onMouseEnter={()=>setHoveredCircle({taskId:task.id,side:'end'})}
                           onMouseLeave={()=>setHoveredCircle(null)}
-                          style={{position:'absolute',right:-(CIRCLE_R*2+6),top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id?'#22c55e':'white',border:'2px solid #22c55e',zIndex:10,cursor:'crosshair',boxShadow:'0 1px 4px rgba(34,197,94,0.4)'}}
+                          style={{position:'absolute',right:-(CIRCLE_R*2+8),top:'50%',transform:'translateY(-50%)',width:CIRCLE_R*2,height:CIRCLE_R*2,borderRadius:'50%',background:hoveredCircle?.taskId===task.id?'#22c55e':'white',border:'2px solid #22c55e',zIndex:10,cursor:'crosshair',boxShadow:'0 1px 4px rgba(34,197,94,0.4)'}}
                         />
                       </>
                     )}
-                  </div>
                   </div>
                 );
               })}
