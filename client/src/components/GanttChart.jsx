@@ -684,6 +684,50 @@ export default function GanttChart({ onEditTask }) {
                 const isSelected = selectedTaskId === task.id;
                 const pct        = task.computedProgress;
 
+                // ── Milestone: render as diamond ──────────────────────────────
+                if(task.taskType === 'milestone') {
+                  const ms = ROW_H * 0.46;
+                  const mx = xOf(new Date(task.start + 'T00:00:00'), rangeStart, ppd);
+                  const my = rowIdx * ROW_H + (ROW_H - ms) / 2;
+                  return (
+                    <div key={task.id}
+                      data-bar-id={task.id}
+                      style={{
+                        position: 'absolute',
+                        left: mx - ms / 2,
+                        top: my,
+                        width: ms, height: ms,
+                        transform: 'rotate(45deg)',
+                        background: task.color,
+                        border: `2px solid ${task.color}`,
+                        zIndex: 5,
+                        cursor: 'pointer',
+                        boxShadow: isSelected ? `0 0 0 3px ${task.color}55` : '0 2px 6px rgba(0,0,0,0.2)',
+                      }}
+                      onClick={e=>{ e.stopPropagation(); setSelectedTaskId(id=>id===task.id?null:task.id); }}
+                      onDoubleClick={e=>{ e.stopPropagation(); onEditTask(task); }}
+                      onMouseEnter={()=>{ clearTimeout(window._hoverTimer); setHoveredBar(task.id); }}
+                      onMouseLeave={()=>{ window._hoverTimer = setTimeout(()=>setHoveredBar(null), 120); }}
+                    >
+                      {/* Label above the diamond */}
+                      <span style={{
+                        position: 'absolute',
+                        top: -(ROW_H * 0.28),
+                        left: '50%',
+                        transform: 'translateX(-50%) rotate(-45deg)',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: task.color,
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+                      }}>
+                        {task.name}
+                      </span>
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={task.id}
                     data-bar-id={task.id}

@@ -36,6 +36,7 @@ export default function EditTaskModal({ task, onClose }) {
   const isParent = task?.isParent;
 
   const [form, setForm] = useState({
+    taskType: 'task',
     name: '', assignee: '', status: 'abierto',
     start: today(), end: nextWeek(),
     progress: 0, color: COLORS[0],
@@ -54,6 +55,7 @@ export default function EditTaskModal({ task, onClose }) {
     const dur = parseDuration(task.duration);
     const est = parseDuration(task.estimation);
     setForm({
+      taskType:        task.taskType    ?? 'task',
       name:            task.name        ?? '',
       assignee:        task.assignee    ?? '',
       status:          task.status      ?? 'abierto',
@@ -131,8 +133,10 @@ export default function EditTaskModal({ task, onClose }) {
   const handleSave = () => {
     if (!form.name.trim()) return;
     if (form.durationError || form.estimationError) return;
+    const milestoneEnd = form.taskType === 'milestone' ? form.start : form.end;
     const payload = {
       ...form,
+      end:        milestoneEnd,
       name:       form.name.trim(),
       duration:   `${form.durationValue}${form.durationUnit}`,
       estimation: form.estimationValue ? `${form.estimationValue}${form.estimationUnit}` : '',
@@ -189,6 +193,27 @@ export default function EditTaskModal({ task, onClose }) {
               onKeyDown={e => e.key === 'Enter' && handleSave()}
             />
           </Field>
+
+          {/* Tipo de tarea */}
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tipo</label>
+            <div className="flex rounded-lg overflow-hidden border border-gray-200 ml-2">
+              <button
+                onClick={() => set('taskType', 'task')}
+                className="px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{ background: form.taskType === 'task' ? '#3b82f6' : '#f9fafb', color: form.taskType === 'task' ? '#fff' : '#6b7280' }}
+              >
+                📋 Tarea
+              </button>
+              <button
+                onClick={() => set('taskType', 'milestone')}
+                className="px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{ background: form.taskType === 'milestone' ? '#7c3aed' : '#f9fafb', color: form.taskType === 'milestone' ? '#fff' : '#6b7280' }}
+              >
+                ◆ Hito
+              </button>
+            </div>
+          </div>
 
           {/* Asignado */}
           <Field label="Asignado a">

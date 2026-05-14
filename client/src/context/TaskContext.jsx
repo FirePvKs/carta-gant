@@ -57,6 +57,7 @@ export function TaskProvider({ children }) {
     const maxOrder = prev => prev.filter(t => !t.parentId).reduce((m,t) => Math.max(m, t.order ?? 0), 0);
     const task = {
       id: genId(),
+      taskType:    data.taskType    ?? 'task',       // 'task' | 'milestone'
       name:        data.name        ?? 'Nueva tarea',
       assignee:    data.assignee    ?? '',
       status:      data.status      ?? 'abierto',
