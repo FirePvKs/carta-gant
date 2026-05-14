@@ -215,7 +215,7 @@ export default function TaskPanel({ onEdit }) {
   const { tasks, unnestTask, addTask, reorderTask } = useTasks();
   const [draggingId, setDraggingId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
-  const [adding, setAdding]         = useState(false);
+  const [adding, setAdding]         = useState(null); // null | 'task' | 'milestone'
   const [newName, setNewName]       = useState('');
 
   // Escucha eventos de reordenamiento desde TaskRow
@@ -251,11 +251,11 @@ export default function TaskPanel({ onEdit }) {
     if (name) {
       const today = new Date().toISOString().split('T')[0];
       const end   = new Date(); end.setDate(end.getDate() + 7);
-      addTask({ name, start: today, end: end.toISOString().split('T')[0] });
+      addTask({ name, start: today, end: adding === 'milestone' ? today : end.toISOString().split('T')[0], taskType: adding ?? 'task' });
     }
-    setAdding(false); setNewName('');
+    setAdding(null); setNewName('');
   };
-  const cancelAdd = () => { setAdding(false); setNewName(''); };
+  const cancelAdd = () => { setAdding(null); setNewName(''); };
 
   const tree = buildTree(tasks);
 
@@ -269,9 +269,13 @@ export default function TaskPanel({ onEdit }) {
           <span className="font-semibold text-gray-500 uppercase tracking-wider flex-shrink-0">Tarea</span>
           <span className="text-gray-300 ml-auto">Estado</span>
         </div>
-        <button onClick={() => { setAdding(true); setNewName(''); }}
-          className="ml-3 flex-shrink-0 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors">
-          <Plus size={13} /> Añadir
+        <button onClick={() => { setAdding('milestone'); setNewName(''); }}
+          className="ml-3 flex-shrink-0 text-xs text-violet-600 hover:text-violet-800 font-medium transition-colors">
+          + Hito
+        </button>
+        <button onClick={() => { setAdding('task'); setNewName(''); }}
+          className="ml-2 flex-shrink-0 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors">
+          + Tarea
         </button>
       </div>
 
@@ -311,11 +315,15 @@ export default function TaskPanel({ onEdit }) {
             ))}
 
             {adding && (
-              <div className="flex items-center gap-1.5 px-3 py-2 mx-1 rounded-lg border border-blue-300 bg-blue-50 mt-1">
+              <div className="flex items-center gap-1.5 px-3 py-2 mx-1 rounded-lg mt-1"
+                style={{ border: adding === 'milestone' ? '1px solid #8b5cf6' : '1px solid #93c5fd', background: adding === 'milestone' ? '#f5f3ff' : '#eff6ff' }}>
+                <span style={{ fontSize:10, color: adding === 'milestone' ? '#7c3aed' : '#3b82f6', fontWeight:700, flexShrink:0, letterSpacing:'0.05em', textTransform:'uppercase' }}>
+                  {adding === 'milestone' ? 'Hito' : 'Tarea'}
+                </span>
                 <input autoFocus type="text" value={newName}
                   onChange={e => setNewName(e.target.value)}
                   onKeyDown={e => { if(e.key==='Enter') confirmAdd(); if(e.key==='Escape') cancelAdd(); }}
-                  placeholder="Nombre de la tarea…"
+                  placeholder={adding === "milestone" ? "Nombre del hito..." : "Nombre de la tarea..."}
                   className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder-gray-400 min-w-0"
                 />
                 <button onClick={confirmAdd}

@@ -203,14 +203,14 @@ export default function EditTaskModal({ task, onClose }) {
                 className="px-3 py-1.5 text-xs font-medium transition-colors"
                 style={{ background: form.taskType === 'task' ? '#3b82f6' : '#f9fafb', color: form.taskType === 'task' ? '#fff' : '#6b7280' }}
               >
-                📋 Tarea
+                Tarea
               </button>
               <button
                 onClick={() => set('taskType', 'milestone')}
                 className="px-3 py-1.5 text-xs font-medium transition-colors"
                 style={{ background: form.taskType === 'milestone' ? '#7c3aed' : '#f9fafb', color: form.taskType === 'milestone' ? '#fff' : '#6b7280' }}
               >
-                ◆ Hito
+                Hito
               </button>
             </div>
           </div>
