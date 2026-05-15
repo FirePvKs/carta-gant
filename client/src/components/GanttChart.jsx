@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { ChevronRight, ChevronDown, ClipboardList } from 'lucide-react';
 import { useTasks } from '../context/TaskContext';
+import { taskMatchesFilters } from '../App';
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 const TASK_W = 220;
@@ -161,7 +162,7 @@ const ZoomMoveBar = ({ zoom, setZoom, selectedTask, moveStep, setMoveStep, stepL
   );
 };
 
-export default function GanttChart({ onEditTask }) {
+export default function GanttChart({ onEditTask, filters }) {
   const { tasks, hiddenParents, toggleParent, updateTask, addDependency, removeDependency } = useTasks();
   const [zoom, setZoom] = useState('semanas');
   const [hoveredBar, setHoveredBar] = useState(null);   // taskId
@@ -247,6 +248,11 @@ export default function GanttChart({ onEditTask }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [selectedTaskId, moveSelectedTask]);
+  const hasFilters = filters && (filters.status.length || filters.priority.length || filters.assignee.length || filters.search);
+  const filteredIds = hasFilters
+    ? new Set(tasks.filter(t => taskMatchesFilters(t, filters)).map(t => t.id))
+    : null;
+
   const visibleTasks = useMemo(() => {
     const result = [];
     const add = (id, depth) => {
@@ -741,6 +747,8 @@ export default function GanttChart({ onEditTask }) {
                       overflow:'visible',
                       cursor: isLocked ? 'not-allowed' : 'pointer',
                       zIndex: 4,
+                      opacity: filteredIds && !filteredIds.has(task.id) ? 0.15 : 1,
+                      transition: 'opacity 0.2s',
                     }}
                     onMouseEnter={()=>{ clearTimeout(window._hoverTimer); setHoveredBar(task.id); }}
                     onMouseLeave={()=>{ window._hoverTimer = setTimeout(()=>setHoveredBar(null), 120); }}

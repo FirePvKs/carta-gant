@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { useTasks, calcProgress } from '../context/TaskContext';
+import { taskMatchesFilters } from '../App';
 
 const STATUSES = {
   abierto:     { dot: '#9ca3af' },
@@ -31,7 +32,7 @@ function DropLine({ visible }) {
 }
 
 // ─── Fila individual ─────────────────────────────────────────────────────────
-function TaskRow({ task, depth, onEdit, draggingId, setDraggingId, dropTarget, setDropTarget }) {
+function TaskRow({ task, depth, onEdit, draggingId, setDraggingId, dropTarget, setDropTarget, dimmed }) {
   const { nestTask, tasks } = useTasks();
   const [collapsed, setCollapsed] = useState(false);
   const numRef  = useRef(null);  // zona número  → reordenar
@@ -112,7 +113,7 @@ function TaskRow({ task, depth, onEdit, draggingId, setDraggingId, dropTarget, s
           display: 'flex', alignItems: 'center',
           paddingRight: 8, paddingTop: 4, paddingBottom: 4,
           paddingLeft: 4 + depth * 16,
-          opacity: isDragging ? 0.35 : 1,
+          opacity: isDragging ? 0.35 : dimmed ? 0.25 : 1,
           borderRadius: 6, margin: '0 4px',
           border: isOn ? '1px dashed #93c5fd' : '1px solid transparent',
           background: isOn ? '#eff6ff' : 'transparent',
@@ -211,7 +212,7 @@ function TaskRow({ task, depth, onEdit, draggingId, setDraggingId, dropTarget, s
 }
 
 // ─── Panel principal ─────────────────────────────────────────────────────────
-export default function TaskPanel({ onEdit }) {
+export default function TaskPanel({ onEdit, filters, hasFilters }) {
   const { tasks, unnestTask, addTask, reorderTask } = useTasks();
   const [draggingId, setDraggingId] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
@@ -257,7 +258,15 @@ export default function TaskPanel({ onEdit }) {
   };
   const cancelAdd = () => { setAdding(null); setNewName(''); };
 
+  // If filters active, flatten to matching tasks (ignore tree structure for filtering)
+  const filteredIds = hasFilters
+    ? new Set(tasks.filter(t => taskMatchesFilters(t, filters)).map(t => t.id))
+    : null;
+
   const tree = buildTree(tasks);
+
+  // Mark rows that don't match (dim them)
+  const isVisible = (task) => !filteredIds || filteredIds.has(task.id);
 
   return (
     <aside className="w-72 min-w-[288px] bg-white border-r border-gray-200 flex flex-col h-full">
@@ -311,6 +320,7 @@ export default function TaskPanel({ onEdit }) {
                 setDraggingId={setDraggingId}
                 dropTarget={dropTarget}
                 setDropTarget={setDropTarget}
+                dimmed={!isVisible(task)}
               />
             ))}
 
