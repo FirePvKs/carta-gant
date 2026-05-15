@@ -1,12 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 const TaskContext = createContext(null);
-const STORAGE_KEY = 'gantt-tasks-v3';
+const getStorageKey = (projectId) => `gantt-tasks-${projectId}`;
 
 const genId = () => Math.random().toString(36).slice(2, 10);
 
-const loadTasks = () => {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]'); }
+const loadTasks = (projectId) => {
+  try { return JSON.parse(localStorage.getItem(getStorageKey(projectId)) ?? '[]'); }
   catch { return []; }
 };
 
@@ -40,8 +40,8 @@ const recalcParent = (parentId, tasks) => {
 
 const HISTORY_LIMIT = 50;
 
-export function TaskProvider({ children }) {
-  const [tasks,       setTasks]       = useState(loadTasks);
+export function TaskProvider({ children, projectId }) {
+  const [tasks, setTasks] = useState(() => loadTasks(projectId));
   const [hiddenParents, setHiddenParents] = useState(new Set());
 
   // Undo/redo stacks — stored as ref so they don't cause re-renders
@@ -49,9 +49,18 @@ export function TaskProvider({ children }) {
   const future = useRef([]);  // array of snapshots
 
   // Persist to localStorage on every change
+  // Reload tasks when switching projects
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-  }, [tasks]);
+    setTasks(loadTasks(projectId));
+    // Reset undo/redo on project switch
+    past.current   = [];
+    future.current = [];
+  }, [projectId]);
+
+  // Persist on task changes
+  useEffect(() => {
+    localStorage.setItem(getStorageKey(projectId), JSON.stringify(tasks));
+  }, [tasks, projectId]);
 
   // Keyboard Ctrl+Z / Ctrl+Y
   useEffect(() => {

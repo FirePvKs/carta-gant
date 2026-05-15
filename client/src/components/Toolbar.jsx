@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { Download, Loader2, Undo2, Redo2 } from 'lucide-react';
+import { Download, Loader2, Undo2, Redo2, ChevronLeft } from 'lucide-react';
 import { exportGanttToPDF } from '../utils/exportPDF';
 import { useTasks } from '../context/TaskContext';
+import logo from '../assets/logo.png';
 
-export default function Toolbar() {
+const BRAND_COLOR = '#70a957';
+
+export default function Toolbar({ project, onBack }) {
   const { tasks, canUndo, canRedo, undo, redo } = useTasks();
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress]   = useState(0);
@@ -11,7 +14,7 @@ export default function Toolbar() {
   const handleExport = async () => {
     if (!tasks.length) return alert('Agrega tareas antes de exportar.');
     setExporting(true);
-    try { await exportGanttToPDF('gantt-container', 'Mi Proyecto Gantt', setProgress); }
+    try { await exportGanttToPDF('gantt-container', project?.name ?? 'Proyecto', setProgress); }
     catch (err) { alert('Error: ' + err.message); }
     finally { setExporting(false); setProgress(0); }
   };
@@ -24,53 +27,65 @@ export default function Toolbar() {
   ).length;
 
   return (
-    <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-200 gap-4 flex-wrap">
-      {/* Left: title + stats */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-sm font-semibold text-gray-700">Mi Proyecto Gantt</h1>
-        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-          {tasks.length} {tasks.length === 1 ? 'tarea' : 'tareas'}
+    /* Barra delgada horizontal con color de marca */
+    <div style={{ background: BRAND_COLOR, height: 40, flexShrink: 0 }}
+      className="flex items-center justify-between px-4 w-full">
+
+      {/* Left: logo + back + project name */}
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Logo */}
+        <img src={logo} alt="V.Gant" style={{ height: 22, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)', flexShrink: 0 }} />
+
+        <div className="w-px h-4 bg-white opacity-30 flex-shrink-0" />
+
+        {/* Back button */}
+        <button onClick={onBack}
+          className="flex items-center gap-1 text-xs text-white font-medium opacity-90 hover:opacity-100 transition-opacity flex-shrink-0">
+          <ChevronLeft size={14} />
+          Proyectos
+        </button>
+
+        <div className="w-px h-4 bg-white opacity-30 flex-shrink-0" />
+
+        {/* Project name */}
+        <span className="text-xs font-semibold text-white truncate max-w-[200px]">
+          {project?.name ?? 'Proyecto'}
         </span>
-        {tasks.length > 0 && (
-          <span className="text-xs text-emerald-600 font-medium">{done}/{tasks.length} terminadas</span>
-        )}
-        {overdue > 0 && (
-          <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
-            {overdue} vencida{overdue > 1 ? 's' : ''}
+
+        {/* Stats */}
+        <div className="flex items-center gap-2 ml-1">
+          <span className="text-xs text-white opacity-70">
+            {tasks.length} {tasks.length === 1 ? 'tarea' : 'tareas'}
           </span>
-        )}
+          {tasks.length > 0 && (
+            <span className="text-xs text-white opacity-70">{done}/{tasks.length} terminadas</span>
+          )}
+          {overdue > 0 && (
+            <span className="text-xs font-semibold text-white bg-red-500 px-1.5 py-0.5 rounded-full">
+              {overdue} vencida{overdue > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Right: undo/redo + export */}
-      <div className="flex items-center gap-2">
-        {/* Undo */}
-        <button
-          onClick={undo}
-          disabled={!canUndo}
-          title="Deshacer (Ctrl+Z)"
-          className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-        >
-          <Undo2 size={14} />
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <button onClick={undo} disabled={!canUndo} title="Deshacer (Ctrl+Z)"
+          className="flex items-center justify-center w-7 h-7 rounded text-white opacity-80 hover:opacity-100 hover:bg-white hover:bg-opacity-20 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+          <Undo2 size={13} />
+        </button>
+        <button onClick={redo} disabled={!canRedo} title="Rehacer (Ctrl+Y)"
+          className="flex items-center justify-center w-7 h-7 rounded text-white opacity-80 hover:opacity-100 hover:bg-white hover:bg-opacity-20 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+          <Redo2 size={13} />
         </button>
 
-        {/* Redo */}
-        <button
-          onClick={redo}
-          disabled={!canRedo}
-          title="Rehacer (Ctrl+Y)"
-          className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-        >
-          <Redo2 size={14} />
-        </button>
+        <div className="w-px h-4 bg-white opacity-30 mx-1" />
 
-        <div className="w-px h-5 bg-gray-200 mx-1" />
-
-        {/* Export PDF */}
         <button onClick={handleExport} disabled={exporting}
-          className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-300 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">
+          className="flex items-center gap-1.5 text-xs font-medium text-white bg-white bg-opacity-20 hover:bg-opacity-30 disabled:opacity-40 px-3 py-1.5 rounded transition-all">
           {exporting
-            ? <><Loader2 size={13} className="animate-spin" />{progress}%</>
-            : <><Download size={13} />Exportar PDF</>}
+            ? <><Loader2 size={12} className="animate-spin" />{progress}%</>
+            : <><Download size={12} />Exportar PDF</>}
         </button>
       </div>
     </div>
