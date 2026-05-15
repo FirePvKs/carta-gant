@@ -16,7 +16,12 @@ export default function Toolbar() {
     finally { setExporting(false); setProgress(0); }
   };
 
-  const done = tasks.filter(t => t.status === 'terminado').length;
+  const done    = tasks.filter(t => t.status === 'terminado').length;
+  const overdue = tasks.filter(t =>
+    ['abierto','en_progreso'].includes(t.status) &&
+    t.taskType !== 'milestone' &&
+    new Date(t.end + 'T23:59:59') < new Date()
+  ).length;
 
   return (
     <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-200 gap-4 flex-wrap">
@@ -28,6 +33,11 @@ export default function Toolbar() {
         </span>
         {tasks.length > 0 && (
           <span className="text-xs text-emerald-600 font-medium">{done}/{tasks.length} terminadas</span>
+        )}
+        {overdue > 0 && (
+          <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+            {overdue} vencida{overdue > 1 ? 's' : ''}
+          </span>
         )}
       </div>
 

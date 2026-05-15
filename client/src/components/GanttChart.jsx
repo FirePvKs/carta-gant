@@ -689,6 +689,9 @@ export default function GanttChart({ onEditTask, filters }) {
                 const isHovered  = hoveredBar === task.id;
                 const isSelected = selectedTaskId === task.id;
                 const pct        = task.computedProgress;
+                const isOverdue  = ['abierto','en_progreso'].includes(task.status)
+                  && task.taskType !== 'milestone'
+                  && new Date(task.end + 'T23:59:59') < new Date();
 
                 // ── Milestone: render as diamond ──────────────────────────────
                 if(task.taskType === 'milestone') {
@@ -739,8 +742,10 @@ export default function GanttChart({ onEditTask, filters }) {
                     data-bar-id={task.id}
                     style={{
                       position:'absolute', left:bx, top:by, width:bw, height:bh,
-                      background: isParent ? task.color+'18' : task.color+'28',
-                      border: isParent ? `2px solid ${task.color}90` : `1.5px solid ${task.color}60`,
+                      background: isOverdue ? '#fef2f2' : isParent ? task.color+'18' : task.color+'28',
+                      border: isOverdue
+                        ? '1.5px solid #f87171'
+                        : isParent ? `2px solid ${task.color}90` : `1.5px solid ${task.color}60`,
                       outline: isSelected ? `2px solid ${task.color}` : 'none',
                       outlineOffset: 2,
                       borderRadius: isParent ? 3 : 4,
@@ -756,7 +761,13 @@ export default function GanttChart({ onEditTask, filters }) {
                     onDoubleClick={e=>{ e.stopPropagation(); onEditTask(task); }}
                   >
                     {/* Progress fill */}
-                    <div style={{height:'100%',width:`${pct}%`,background:task.color,borderRadius:3,pointerEvents:'none'}}/>
+                    <div style={{height:'100%',width:`${pct}%`,background:isOverdue?'#ef4444':task.color,borderRadius:3,pointerEvents:'none'}}/>
+                    {/* Overdue stripe pattern overlay */}
+                    {isOverdue && (
+                      <div style={{position:'absolute',inset:0,borderRadius:3,pointerEvents:'none',
+                        backgroundImage:'repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(239,68,68,0.12) 6px,rgba(239,68,68,0.12) 12px)'
+                      }}/>
+                    )}
 
                     {/* Label */}
                     {bw>36 && (

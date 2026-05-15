@@ -42,6 +42,9 @@ function TaskRow({ task, depth, onEdit, draggingId, setDraggingId, dropTarget, s
   const hasChildren = task.children?.length > 0;
   const progress    = calcProgress(task.id, tasks);
   const status      = STATUSES[task.status] ?? STATUSES.abierto;
+  const isOverdue   = ['abierto','en_progreso'].includes(task.status)
+    && task.taskType !== 'milestone'
+    && new Date(task.end + 'T23:59:59') < new Date();
   const isDragging  = draggingId === task.id;
 
   // ── drag source ─────────────────────────────────────────────────────────────
@@ -114,6 +117,7 @@ function TaskRow({ task, depth, onEdit, draggingId, setDraggingId, dropTarget, s
           paddingRight: 8, paddingTop: 4, paddingBottom: 4,
           paddingLeft: 4 + depth * 16,
           opacity: isDragging ? 0.35 : dimmed ? 0.25 : 1,
+          background: isOverdue ? '#fef2f2' : 'transparent',
           borderRadius: 6, margin: '0 4px',
           border: isOn ? '1px dashed #93c5fd' : '1px solid transparent',
           background: isOn ? '#eff6ff' : 'transparent',
